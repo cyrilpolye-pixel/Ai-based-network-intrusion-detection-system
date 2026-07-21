@@ -11,6 +11,7 @@ export default function Login() {
         justifyContent: "center",
         alignItems: "center",
         background: "#0f172a",
+        
       }}
     >
       <div
