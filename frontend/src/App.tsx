@@ -10,6 +10,9 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 
+
+
+
 function App() {
   return (
     <BrowserRouter>
