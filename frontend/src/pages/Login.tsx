@@ -7,48 +7,168 @@ export default function Login() {
     <div
       style={{
         height: "100vh",
+        background: "#0f172a",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#0f172a",
+        padding: "20px",
       }}
     >
       <div
         style={{
-          width: 350,
+          width: "420px",
           background: "#1e293b",
-          padding: 30,
-          borderRadius: 10,
+          border: "1px solid #334155",
+          borderRadius: "15px",
+          padding: "40px",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
         }}
       >
-        <h2 style={{ color: "white", textAlign: "center" }}>
+        {/* Logo */}
+        <div
+          style={{
+            width: "70px",
+            height: "70px",
+            borderRadius: "50%",
+            background: "#3b82f6",
+            color: "white",
+            fontSize: "30px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 20px",
+          }}
+        >
+          🛡️
+        </div>
+
+        <h1
+          style={{
+            color: "white",
+            textAlign: "center",
+            marginBottom: "8px",
+          }}
+        >
           AI Network IDS
-        </h2>
+        </h1>
+
+        <p
+          style={{
+            color: "#94a3b8",
+            textAlign: "center",
+            marginBottom: "35px",
+          }}
+        >
+          AI-Based Network Intrusion Detection System
+        </p>
+
+        <label
+          style={{
+            color: "#cbd5e1",
+            display: "block",
+            marginBottom: "8px",
+          }}
+        >
+          Username
+        </label>
 
         <input
           type="text"
-          placeholder="Username"
-          style={{ width: "100%", padding: 10, marginTop: 20 }}
+          placeholder="Enter username"
+          style={inputStyle}
         />
+
+        <label
+          style={{
+            color: "#cbd5e1",
+            display: "block",
+            marginTop: "20px",
+            marginBottom: "8px",
+          }}
+        >
+          Password
+        </label>
 
         <input
           type="password"
-          placeholder="Password"
-          style={{ width: "100%", padding: 10, marginTop: 15 }}
+          placeholder="Enter password"
+          style={inputStyle}
         />
 
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "20px",
+          }}
+        >
+          <label
+            style={{
+              color: "#94a3b8",
+              fontSize: "14px",
+            }}
+          >
+            <input
+              type="checkbox"
+              style={{ marginRight: "8px" }}
+            />
+            Remember Me
+          </label>
+
+          <span
+            style={{
+              color: "#3b82f6",
+              fontSize: "14px",
+              cursor: "pointer",
+            }}
+          >
+            Forgot Password?
+          </span>
+        </div>
+
         <button
+          onClick={() => navigate("/dashboard")}
           style={{
             width: "100%",
-            padding: 12,
-            marginTop: 20,
+            marginTop: "30px",
+            padding: "14px",
+            background: "#3b82f6",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            fontSize: "16px",
+            fontWeight: "bold",
             cursor: "pointer",
           }}
-          onClick={() => navigate("/dashboard")}
         >
-          Login
+          LOGIN
         </button>
+
+        <p
+          style={{
+            color: "#64748b",
+            textAlign: "center",
+            marginTop: "30px",
+            fontSize: "13px",
+          }}
+        >
+          AI-Based Network Intrusion Detection System
+          <br />
+          Version 1.0
+        </p>
       </div>
     </div>
   );
 }
+
+const inputStyle = {
+  width: "100%",
+  padding: "12px",
+  background: "#0f172a",
+  border: "1px solid #334155",
+  borderRadius: "8px",
+  color: "white",
+  outline: "none",
+  fontSize: "15px",
+} as const;
