@@ -24,13 +24,15 @@ export default function MainLayout() {
       >
         <Topbar />
 
-        <div
-          style={{
-            flex: 1,
-            padding: "25px",
-            overflow: "auto",
-          }}
-        >
+       <div
+    style={{
+        flex: 1,
+        padding: "25px",
+        overflowY: "auto",
+        overflowX: "hidden",
+        background: "#0f172a",
+    }}
+>
           <Outlet />
         </div>
       </div>
