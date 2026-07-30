@@ -1,88 +1,240 @@
-import * as React from "react";
-
 type Report = {
   id: number;
   name: string;
   date: string;
   status: "Generated" | "Pending" | "Failed";
+  size: string;
 };
 
-const Reports = () => {
+export default function Reports() {
   const reports: Report[] = [
-    { id: 1, name: "Daily Traffic Report", date: "2026-07-27", status: "Generated" },
-    { id: 2, name: "Intrusion Summary", date: "2026-07-26", status: "Generated" },
-    { id: 3, name: "Weekly Analysis", date: "2026-07-25", status: "Pending" },
-    { id: 4, name: "System Health Report", date: "2026-07-24", status: "Failed" },
+    {
+      id: 1,
+      name: "Daily Traffic Report",
+      date: "28 Jul 2026",
+      status: "Generated",
+      size: "2.4 MB",
+    },
+    {
+      id: 2,
+      name: "Intrusion Summary",
+      date: "27 Jul 2026",
+      status: "Generated",
+      size: "1.8 MB",
+    },
+    {
+      id: 3,
+      name: "Weekly Analysis",
+      date: "26 Jul 2026",
+      status: "Pending",
+      size: "--",
+    },
+    {
+      id: 4,
+      name: "System Health Report",
+      date: "25 Jul 2026",
+      status: "Failed",
+      size: "--",
+    },
   ];
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Generated":
+        return "#22c55e";
+      case "Pending":
+        return "#f59e0b";
+      default:
+        return "#ef4444";
+    }
+  };
+
   return (
-    <div style={{ padding: "20px", color: "white" }}>
-      <h2>Reports</h2>
+    <div style={{ color: "white" }}>
+      <h1 style={{ marginBottom: "25px" }}>Reports</h1>
 
-      <table width="100%" border={1} cellPadding={10}>
-        <thead>
-          <tr>
-            <th>Report Name</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
+      {/* Summary Cards */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3,1fr)",
+          gap: "20px",
+          marginBottom: "25px",
+        }}
+      >
+        <Card title="Generated Reports" value="28" />
 
-        <tbody>
-          {reports.map((report) => (
-            <tr key={report.id}>
-              <td>{report.name}</td>
-              <td>{report.date}</td>
+        <Card title="Pending Reports" value="3" />
 
-              <td
+        <Card title="Failed Reports" value="1" />
+      </div>
+
+      {/* Reports Table */}
+
+      <div
+        style={{
+          background: "#1e293b",
+          border: "1px solid #334155",
+          borderRadius: "12px",
+          overflow: "hidden",
+        }}
+      >
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+          }}
+        >
+          <thead>
+            <tr
+              style={{
+                background: "#111827",
+              }}
+            >
+              <th style={headerStyle}>Report</th>
+              <th style={headerStyle}>Date</th>
+              <th style={headerStyle}>Size</th>
+              <th style={headerStyle}>Status</th>
+              <th style={headerStyle}>Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {reports.map((report) => (
+              <tr
+                key={report.id}
                 style={{
-                  color:
-                    report.status === "Generated"
-                      ? "lightgreen"
-                      : report.status === "Pending"
-                      ? "orange"
-                      : "red",
-                  fontWeight: "bold",
+                  borderBottom: "1px solid #334155",
                 }}
               >
-                {report.status}
-              </td>
+                <td style={cellStyle}>{report.name}</td>
 
-              <td>
-                {report.status === "Generated" ? (
-                  <button
-                    style={{
-                      padding: "5px 10px",
-                      background: "#3b82f6",
-                      border: "none",
-                      color: "white",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Download
-                  </button>
-                ) : (
-                  <button
-                    style={{
-                      padding: "5px 10px",
-                      background: "#6b7280",
-                      border: "none",
-                      color: "white",
-                      cursor: "not-allowed",
-                    }}
-                    disabled
-                  >
-                    Not Available
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                <td style={cellStyle}>{report.date}</td>
+
+                <td style={cellStyle}>{report.size}</td>
+
+                <td
+                  style={{
+                    ...cellStyle,
+                    color: getStatusColor(report.status),
+                    fontWeight: "bold",
+                  }}
+                >
+                  {report.status}
+                </td>
+
+                <td style={cellStyle}>
+                  {report.status === "Generated" ? (
+                    <button style={downloadButton}>
+                      Download
+                    </button>
+                  ) : (
+                    <button
+                      style={disabledButton}
+                      disabled
+                    >
+                      Unavailable
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Bottom Buttons */}
+
+      <div
+        style={{
+          display: "flex",
+          gap: "20px",
+          marginTop: "25px",
+        }}
+      >
+        <button style={primaryButton}>
+          Generate New Report
+        </button>
+
+        <button style={secondaryButton}>
+          Export All
+        </button>
+      </div>
     </div>
   );
+}
+
+type CardProps = {
+  title: string;
+  value: string;
 };
 
-export default Reports;
+function Card({ title, value }: CardProps) {
+  return (
+    <div
+      style={{
+        background: "#1e293b",
+        border: "1px solid #334155",
+        borderRadius: "12px",
+        padding: "20px",
+      }}
+    >
+      <h3
+        style={{
+          color: "#94a3b8",
+          marginBottom: "10px",
+        }}
+      >
+        {title}
+      </h3>
+
+      <h1>{value}</h1>
+    </div>
+  );
+}
+
+const headerStyle = {
+  padding: "15px",
+  textAlign: "left" as const,
+  color: "#cbd5e1",
+};
+
+const cellStyle = {
+  padding: "15px",
+};
+
+const primaryButton = {
+  background: "#3b82f6",
+  color: "white",
+  border: "none",
+  padding: "10px 18px",
+  borderRadius: "8px",
+  cursor: "pointer",
+};
+
+const secondaryButton = {
+  background: "#334155",
+  color: "white",
+  border: "none",
+  padding: "10px 18px",
+  borderRadius: "8px",
+  cursor: "pointer",
+};
+
+const downloadButton = {
+  background: "#22c55e",
+  color: "white",
+  border: "none",
+  padding: "8px 14px",
+  borderRadius: "6px",
+  cursor: "pointer",
+};
+
+const disabledButton = {
+  background: "#475569",
+  color: "#cbd5e1",
+  border: "none",
+  padding: "8px 14px",
+  borderRadius: "6px",
+  cursor: "not-allowed",
+};

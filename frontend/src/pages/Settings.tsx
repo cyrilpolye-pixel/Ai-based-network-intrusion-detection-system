@@ -1,108 +1,119 @@
 import { useState } from "react";
 
-const Settings = () => {
+export default function Settings() {
   const [settings, setSettings] = useState({
-    username: "admin",
-    email: "admin@example.com",
-    notifications: true,
-    darkMode: true,
+    autoBlock: true,
+    emailAlerts: true,
+    desktopAlerts: false,
+    packetCapture: true,
+    aiThreshold: 85,
+    logRetention: 30,
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+  const handleCheckbox = (name: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      [name]: !prev[name as keyof typeof prev],
+    }));
+  };
+
+  const handleNumberChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const { name, value } = e.target;
 
     setSettings((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: Number(value),
     }));
   };
 
   const handleSave = () => {
-    console.log("Saved settings:", settings);
+    console.log(settings);
     alert("Settings saved successfully!");
   };
 
   return (
-    <div style={{ padding: "20px", color: "white" }}>
-      <h2>Settings</h2>
+    <div style={{ color: "white" }}>
+      <h1 style={{ marginBottom: "25px" }}>System Settings</h1>
 
-      <div style={{ maxWidth: "400px" }}>
-        {/* Username */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>Username</label>
+      <div
+        style={{
+          background: "#1e293b",
+          border: "1px solid #334155",
+          borderRadius: "12px",
+          padding: "25px",
+          maxWidth: "700px",
+        }}
+      >
+        <Checkbox
+          label="Enable Automatic IP Blocking"
+          checked={settings.autoBlock}
+          onChange={() => handleCheckbox("autoBlock")}
+        />
+
+        <Checkbox
+          label="Enable Email Alerts"
+          checked={settings.emailAlerts}
+          onChange={() => handleCheckbox("emailAlerts")}
+        />
+
+        <Checkbox
+          label="Enable Desktop Notifications"
+          checked={settings.desktopAlerts}
+          onChange={() => handleCheckbox("desktopAlerts")}
+        />
+
+        <Checkbox
+          label="Enable Packet Capture"
+          checked={settings.packetCapture}
+          onChange={() => handleCheckbox("packetCapture")}
+        />
+
+        <div style={{ marginTop: "25px" }}>
+          <label style={labelStyle}>
+            AI Detection Threshold (%)
+          </label>
+
           <input
-            type="text"
-            name="username"
-            value={settings.username}
-            onChange={handleChange}
-            style={{
-              width: "100%",
-              padding: "8px",
-              marginTop: "5px",
-              background: "#1e293b",
-              border: "1px solid #334155",
-              color: "white",
-            }}
+            type="number"
+            name="aiThreshold"
+            value={settings.aiThreshold}
+            min={50}
+            max={100}
+            onChange={handleNumberChange}
+            style={inputStyle}
           />
         </div>
 
-        {/* Email */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>Email</label>
+        <div style={{ marginTop: "20px" }}>
+          <label style={labelStyle}>
+            Log Retention (Days)
+          </label>
+
           <input
-            type="email"
-            name="email"
-            value={settings.email}
-            onChange={handleChange}
-            style={{
-              width: "100%",
-              padding: "8px",
-              marginTop: "5px",
-              background: "#1e293b",
-              border: "1px solid #334155",
-              color: "white",
-            }}
+            type="number"
+            name="logRetention"
+            value={settings.logRetention}
+            min={1}
+            max={365}
+            onChange={handleNumberChange}
+            style={inputStyle}
           />
         </div>
 
-        {/* Notifications */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>
-            <input
-              type="checkbox"
-              name="notifications"
-              checked={settings.notifications}
-              onChange={handleChange}
-              style={{ marginRight: "10px" }}
-            />
-            Enable Notifications
-          </label>
-        </div>
-
-        {/* Dark Mode */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>
-            <input
-              type="checkbox"
-              name="darkMode"
-              checked={settings.darkMode}
-              onChange={handleChange}
-              style={{ marginRight: "10px" }}
-            />
-            Dark Mode
-          </label>
-        </div>
-
-        {/* Save Button */}
         <button
           onClick={handleSave}
           style={{
-            padding: "10px",
+            marginTop: "30px",
             background: "#3b82f6",
-            border: "none",
             color: "white",
+            border: "none",
+            padding: "12px 22px",
+            borderRadius: "8px",
             cursor: "pointer",
-            width: "100%",
+            fontSize: "15px",
+            fontWeight: "bold",
           }}
         >
           Save Settings
@@ -110,6 +121,56 @@ const Settings = () => {
       </div>
     </div>
   );
+}
+
+type CheckboxProps = {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
 };
 
-export default Settings;
+function Checkbox({
+  label,
+  checked,
+  onChange,
+}: CheckboxProps) {
+  return (
+    <div
+      style={{
+        marginBottom: "18px",
+      }}
+    >
+      <label
+        style={{
+          cursor: "pointer",
+          color: "#cbd5e1",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={onChange}
+          style={{ marginRight: "10px" }}
+        />
+
+        {label}
+      </label>
+    </div>
+  );
+}
+
+const labelStyle = {
+  display: "block" as const,
+  marginBottom: "8px",
+  color: "#cbd5e1",
+};
+
+const inputStyle = {
+  width: "100%",
+  padding: "10px",
+  background: "#0f172a",
+  border: "1px solid #334155",
+  borderRadius: "8px",
+  color: "white",
+  fontSize: "15px",
+};
