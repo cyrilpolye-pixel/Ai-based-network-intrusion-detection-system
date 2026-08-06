@@ -1,0 +1,86 @@
+in vs code , install Thunder Client
+
+Open Thunder Client → New Request
+Method: POST
+URL:
+http://localhost:5000/api/auth/register
+Go to Body → JSON and paste:
+{
+  "name": "Cyril",
+  "email": "cyril@example.com",
+  "password": "123456",
+  "role": "admin"
+}
+
+Click Send.
+
+Expected response
+{
+  "success": true,
+  "message": "User registered successfully.",
+  "user": {
+    "id": "...",
+    "name": "Cyril",
+    "email": "cyril@example.com",
+    "role": "admin"
+  }
+}
+
+
+1. Create a new request
+Method: POST
+URL:
+http://localhost:5000/api/auth/login
+2. Body → JSON
+{
+  "email": "cyril@example.com",
+  "password": "123456"
+}
+3. Click Send
+
+You should receive a response like:
+
+{
+  "success": true,
+  "message": "Login successful.",
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "id": "...",
+    "name": "Cyril",
+    "email": "cyril@example.com",
+    "role": "admin"
+  }
+}
+
+
+1. Create a new request
+Method: GET
+URL:
+http://localhost:5000/api/auth/profile
+2. Add the Authorization header
+
+Go to Headers and add:
+
+Key	Value
+Authorization	Bearer YOUR_JWT_TOKEN
+
+Replace YOUR_JWT_TOKEN with the token you received from the login response.
+
+Example:
+
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+3. Click Send
+
+Expected response:
+
+{
+  "success": true,
+  "user": {
+    "_id": "...",
+    "name": "Cyril",
+    "email": "cyril@example.com",
+    "role": "admin",
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
