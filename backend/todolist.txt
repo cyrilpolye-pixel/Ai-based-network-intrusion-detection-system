@@ -1,0 +1,8 @@
+Authentication (JWT)
+CRUD APIs
+Connect frontend to APIs
+Train the ML model
+Integrate Python ↔ Node.js
+Live monitoring & alerts
+Reports and analytics
+Final testing and deployment
