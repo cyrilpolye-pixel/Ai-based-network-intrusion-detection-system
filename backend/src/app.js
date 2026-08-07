@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 require("dotenv").config();
-
+const trafficRoutes = require("./routes/trafficRoutes");
 const authRoutes = require("./routes/authRoutes");
 
 const app = express();
@@ -21,4 +21,5 @@ app.get("/", (req, res) => {
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/traffic", trafficRoutes);
 module.exports = app;
