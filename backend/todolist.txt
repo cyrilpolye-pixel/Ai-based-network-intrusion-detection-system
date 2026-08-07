@@ -1,7 +1,7 @@
 backend steps:
 
 Authentication (JWT) done
-CRUD APIs
+CRUD APIs     done
 Connect frontend to APIs
 Train the ML model
 Integrate Python ↔ Node.js
