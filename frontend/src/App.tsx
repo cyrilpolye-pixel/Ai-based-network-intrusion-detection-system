@@ -1,7 +1,9 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import MainLayout from "./layouts/MainLayout";
+
 import Dashboard from "./pages/Dashboard";
 import LiveMonitoring from "./pages/LiveMonitoring";
 import TrafficAnalysis from "./pages/TrafficAnalysis";
@@ -10,14 +12,17 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 
+import ProtectedRoute from "./components/common/ProtectedRoute";
+
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Login */}
-        <Route path="/" element={<Login />} />
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
 
-        {/* Main Dashboard Layout */}
+      {/* Protected application */}
+      <Route element={<ProtectedRoute />}>
         <Route path="/" element={<MainLayout />}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="live-monitoring" element={<LiveMonitoring />} />
@@ -27,9 +32,12 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
         </Route>
-      </Routes>
-    </BrowserRouter>
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
 export default App;
+

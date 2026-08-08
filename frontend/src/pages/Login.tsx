@@ -1,12 +1,60 @@
+import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    setError("");
+
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await api.post("/auth/login", {
+        email,
+        password,
+      });
+
+      const { token, user } = response.data;
+
+      if (!token || !user) {
+        throw new Error("Invalid login response from server.");
+      }
+
+      login(token, user);
+
+      navigate("/dashboard");
+    } catch (err: any) {
+      const message =
+        err.response?.data?.message ||
+        "Login failed. Please check your email and password.";
+
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
       style={{
-        height: "100vh",
+        minHeight: "100vh",
         background: "#0f172a",
         display: "flex",
         justifyContent: "center",
@@ -17,6 +65,7 @@ export default function Login() {
       <div
         style={{
           width: "420px",
+          maxWidth: "100%",
           background: "#1e293b",
           border: "1px solid #334155",
           borderRadius: "15px",
@@ -62,88 +111,109 @@ export default function Login() {
           AI-Based Network Intrusion Detection System
         </p>
 
-        <label
-          style={{
-            color: "#cbd5e1",
-            display: "block",
-            marginBottom: "8px",
-          }}
-        >
-          Username
-        </label>
+        <form onSubmit={handleLogin}>
+          {/* Email */}
+          <label style={labelStyle}>Email</label>
 
-        <input
-          type="text"
-          placeholder="Enter username"
-          style={inputStyle}
-        />
+          <input
+            type="email"
+            placeholder="Enter email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={inputStyle}
+            disabled={loading}
+          />
 
-        <label
-          style={{
-            color: "#cbd5e1",
-            display: "block",
-            marginTop: "20px",
-            marginBottom: "8px",
-          }}
-        >
-          Password
-        </label>
-
-        <input
-          type="password"
-          placeholder="Enter password"
-          style={inputStyle}
-        />
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: "20px",
-          }}
-        >
+          {/* Password */}
           <label
             style={{
-              color: "#94a3b8",
-              fontSize: "14px",
+              ...labelStyle,
+              marginTop: "20px",
             }}
           >
-            <input
-              type="checkbox"
-              style={{ marginRight: "8px" }}
-            />
-            Remember Me
+            Password
           </label>
 
-          <span
+          <input
+            type="password"
+            placeholder="Enter password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={inputStyle}
+            disabled={loading}
+          />
+
+          {/* Error */}
+          {error && (
+            <div
+              style={{
+                marginTop: "15px",
+                padding: "10px 12px",
+                background: "rgba(239, 68, 68, 0.12)",
+                border: "1px solid #ef4444",
+                borderRadius: "8px",
+                color: "#fca5a5",
+                fontSize: "14px",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {/* Remember Me / Forgot Password */}
+          <div
             style={{
-              color: "#3b82f6",
-              fontSize: "14px",
-              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: "20px",
             }}
           >
-            Forgot Password?
-          </span>
-        </div>
+            <label
+              style={{
+                color: "#94a3b8",
+                fontSize: "14px",
+              }}
+            >
+              <input
+                type="checkbox"
+                style={{ marginRight: "8px" }}
+                disabled={loading}
+              />
+              Remember Me
+            </label>
 
-        <button
-          onClick={() => navigate("/dashboard")}
-          style={{
-            width: "100%",
-            marginTop: "30px",
-            padding: "14px",
-            background: "#3b82f6",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "16px",
-            fontWeight: "bold",
-            cursor: "pointer",
-          }}
-        >
-          LOGIN
-        </button>
+            <span
+              style={{
+                color: "#3b82f6",
+                fontSize: "14px",
+                cursor: "pointer",
+              }}
+            >
+              Forgot Password?
+            </span>
+          </div>
+<a href="/signup">Don't have an account? Sign up</a>
+          {/* Login */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              marginTop: "30px",
+              padding: "14px",
+              background: loading ? "#64748b" : "#3b82f6",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              cursor: loading ? "not-allowed" : "pointer",
+            }}
+          >
+            {loading ? "LOGGING IN..." : "LOGIN"}
+          </button>
+        </form>
 
         <p
           style={{
@@ -162,6 +232,12 @@ export default function Login() {
   );
 }
 
+const labelStyle = {
+  color: "#cbd5e1",
+  display: "block",
+  marginBottom: "8px",
+};
+
 const inputStyle = {
   width: "100%",
   padding: "12px",
@@ -171,4 +247,6 @@ const inputStyle = {
   color: "white",
   outline: "none",
   fontSize: "15px",
-} as const;
+  boxSizing: "border-box" as const,
+};
+
