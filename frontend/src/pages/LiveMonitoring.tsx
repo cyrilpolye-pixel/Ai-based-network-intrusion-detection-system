@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { io } from "socket.io-client";
+import "./LiveMonitoring.css";
 
 type TrafficLog = {
-  id: number;
+  id: string;
   source: string;
   destination: string;
   protocol: string;
@@ -9,95 +11,173 @@ type TrafficLog = {
   time: string;
 };
 
+const socket = io("http://localhost:5000", {
+  autoConnect: false,
+});
+
 const LiveMonitoring = () => {
   const [logs, setLogs] = useState<TrafficLog[]>([]);
+  const [connected, setConnected] = useState(false);
 
-  // fake live data generator
   useEffect(() => {
-    const interval = setInterval(() => {
+    socket.connect();
+
+    const handleConnect = () => {
+      console.log("🔌 Connected to Live Monitoring");
+      setConnected(true);
+    };
+
+    const handleDisconnect = () => {
+      console.log("🔌 Disconnected from Live Monitoring");
+      setConnected(false);
+    };
+
+    /*
+     * Backend will emit traffic updates using
+     * the "traffic-update" event.
+     */
+    const handleTrafficUpdate = (data: any) => {
       const newLog: TrafficLog = {
-        id: Date.now(),
-        source: `192.168.1.${Math.floor(Math.random() * 255)}`,
-        destination: `10.0.0.${Math.floor(Math.random() * 255)}`,
-        protocol: ["HTTP", "TCP", "UDP"][Math.floor(Math.random() * 3)],
-        status: Math.random() > 0.8 ? "Suspicious" : "Normal",
-        time: new Date().toLocaleTimeString(),
+        id: data._id || `${Date.now()}-${Math.random()}`,
+        source: data.srcIP || "-",
+        destination: data.dstIP || "-",
+        protocol: data.protocol || "-",
+        status:
+          data.prediction?.toLowerCase() === "attack" ||
+          data.label?.toLowerCase() === "attack" ||
+          data.label?.toLowerCase() === "anomaly"
+            ? "Suspicious"
+            : "Normal",
+        time: data.timestamp
+          ? new Date(data.timestamp).toLocaleTimeString()
+          : new Date().toLocaleTimeString(),
       };
 
-      setLogs((prev) => [newLog, ...prev.slice(0, 9)]);
-    }, 2000);
+      setLogs((previous) => [
+        newLog,
+        ...previous.slice(0, 9),
+      ]);
+    };
 
-    return () => clearInterval(interval);
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("traffic-update", handleTrafficUpdate);
+
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("traffic-update", handleTrafficUpdate);
+
+      socket.disconnect();
+    };
   }, []);
 
+  const suspiciousCount = logs.filter(
+    (log) => log.status === "Suspicious"
+  ).length;
+
+  const threatLevel =
+    suspiciousCount >= 5
+      ? "High"
+      : suspiciousCount >= 2
+      ? "Medium"
+      : "Low";
+
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Live Monitoring</h1>
-
-      {/* Status Cards */}
-      <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
-        <div style={cardStyle}>
-          <h3>Active Connections</h3>
-          <p>{Math.floor(Math.random() * 500)}</p>
+    <div className="live-page">
+      <div className="live-header">
+        <div>
+          <h1>Live Monitoring</h1>
+          <p>
+            Real-time network traffic monitoring
+          </p>
         </div>
 
-        <div style={cardStyle}>
-          <h3>Threat Level</h3>
-          <p style={{ color: "red" }}>Medium</p>
-        </div>
-
-        <div style={cardStyle}>
-          <h3>Packets/sec</h3>
-          <p>{Math.floor(Math.random() * 1000)}</p>
+        <div
+          className={`connection-status ${
+            connected ? "online" : "offline"
+          }`}
+        >
+          <span className="status-dot" />
+          {connected ? "Connected" : "Disconnected"}
         </div>
       </div>
 
-      {/* Live Logs Table */}
-      <div style={{ background: "#111", padding: "15px", borderRadius: "10px" }}>
-        <h2 style={{ color: "#fff" }}>Live Traffic</h2>
+      {/* Status Cards */}
+      <div className="live-cards">
+        <div className="live-card">
+          <h3>Live Connections</h3>
+          <strong>{connected ? logs.length : 0}</strong>
+        </div>
 
-        <table style={{ width: "100%", color: "#fff", marginTop: "10px" }}>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Source</th>
-              <th>Destination</th>
-              <th>Protocol</th>
-              <th>Status</th>
-            </tr>
-          </thead>
+        <div className="live-card">
+          <h3>Threat Level</h3>
+          <strong
+            className={`threat-${threatLevel.toLowerCase()}`}
+          >
+            {threatLevel}
+          </strong>
+        </div>
 
-          <tbody>
-            {logs.map((log) => (
-              <tr key={log.id}>
-                <td>{log.time}</td>
-                <td>{log.source}</td>
-                <td>{log.destination}</td>
-                <td>{log.protocol}</td>
-                <td
-                  style={{
-                    color: log.status === "Suspicious" ? "red" : "lightgreen",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {log.status}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="live-card">
+          <h3>Suspicious Events</h3>
+          <strong>{suspiciousCount}</strong>
+        </div>
+      </div>
+
+      {/* Live Traffic */}
+      <div className="live-section">
+        <h2>Live Traffic</h2>
+
+        {!connected ? (
+          <div className="live-empty">
+            Waiting for Socket.IO connection...
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="live-empty">
+            Connected. Waiting for traffic events...
+          </div>
+        ) : (
+          <div className="live-table-wrapper">
+            <table className="live-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Source</th>
+                  <th>Destination</th>
+                  <th>Protocol</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id}>
+                    <td>{log.time}</td>
+                    <td>{log.source}</td>
+                    <td>{log.destination}</td>
+                    <td>{log.protocol}</td>
+                    <td>
+                      <span
+                        className={`traffic-status ${
+                          log.status === "Suspicious"
+                            ? "suspicious"
+                            : "normal"
+                        }`}
+                      >
+                        {log.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const cardStyle = {
-  flex: 1,
-  background: "#222",
-  color: "#fff",
-  padding: "15px",
-  borderRadius: "10px",
-  textAlign: "center" as const,
-};
-
 export default LiveMonitoring;
+

@@ -11,20 +11,14 @@ Final testing and deployment
 
 
 
-✅ MongoDB Connected
-        ↓
-✅ Models
-        ↓
-⬜ Authentication
-        ↓
-⬜ REST APIs
-        ↓
-⬜ Test APIs with Postman
-        ↓
-⬜ Connect React (replace dummy data)
-        ↓
-⬜ AI Model Integration
-        ↓
-⬜ Live Traffic & Real-time Alerts
-        ↓
-⬜ Reports & Final Testing
+🔄Alerts real-data integration
+🔄 Incident details
+🔄 Reports generation/data
+
+
+🔄 AI prediction/inference integration
+🔄 Actual network traffic capture/collection
+🔄 Real-time intrusion detection pipeline
+🔄 Model information/training integration
+🔄 Proper error/loading/auth handling
+🔄 Security and deployment configuration

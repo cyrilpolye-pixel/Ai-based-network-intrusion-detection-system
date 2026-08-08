@@ -1,9 +1,21 @@
 const TrafficLog = require("../models/TrafficLog");
+const { getIO } = require("../socket/socket");
 
 // Create Traffic Log
 const createTrafficLog = async (req, res) => {
   try {
     const traffic = await TrafficLog.create(req.body);
+
+    // Send the newly created traffic log to connected clients
+    try {
+      const io = getIO();
+      io.emit("traffic-update", traffic);
+    } catch (socketError) {
+      console.error(
+        "Socket.IO emit failed:",
+        socketError.message
+      );
+    }
 
     res.status(201).json({
       success: true,
@@ -21,7 +33,9 @@ const createTrafficLog = async (req, res) => {
 // Get All Traffic Logs
 const getTrafficLogs = async (req, res) => {
   try {
-    const traffic = await TrafficLog.find().sort({ createdAt: -1 });
+    const traffic = await TrafficLog.find().sort({
+      createdAt: -1,
+    });
 
     res.status(200).json({
       success: true,
