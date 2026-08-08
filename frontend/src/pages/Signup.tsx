@@ -1,49 +1,66 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import "./Signup.css";
 
-export default function Login() {
+export default function Signup() {
   const navigate = useNavigate();
-  const { login } = useAuth();
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setError("");
+    setSuccess("");
 
-    if (!email || !password) {
-      setError("Please enter your email and password.");
+    if (!name || !email || !password || !confirmPassword) {
+      setError("Please fill in all fields.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
       return;
     }
 
     try {
       setLoading(true);
 
-      const response = await api.post("/auth/login", {
+      const response = await api.post("/auth/register", {
+        name,
         email,
         password,
       });
 
-      const { token, user } = response.data;
+      setSuccess(
+        response.data.message || "Account created successfully."
+      );
 
-      if (!token || !user) {
-        throw new Error("Invalid login response from server.");
-      }
+      setName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
 
-      login(token, user);
-
-      navigate("/dashboard");
+      setTimeout(() => {
+        navigate("/");
+      }, 1200);
     } catch (err: any) {
       const message =
         err.response?.data?.message ||
-        "Login failed. Please check your email and password.";
+        "Registration failed. Please try again.";
 
       setError(message);
     } finally {
@@ -73,7 +90,6 @@ export default function Login() {
           boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
         }}
       >
-        {/* Logo */}
         <div
           style={{
             width: "70px",
@@ -98,37 +114,53 @@ export default function Login() {
             marginBottom: "8px",
           }}
         >
-          AI Network IDS
+          Create Account
         </h1>
 
         <p
           style={{
             color: "#94a3b8",
             textAlign: "center",
-            marginBottom: "35px",
+            marginBottom: "30px",
           }}
         >
-          AI-Based Network Intrusion Detection System
+          Register for AI Network IDS
         </p>
 
-        <form onSubmit={handleLogin}>
-          {/* Email */}
-          <label style={labelStyle}>Email</label>
+        <form onSubmit={handleSignup}>
+          <label style={labelStyle}>Name</label>
+
+          <input
+            type="text"
+            placeholder="Enter your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={inputStyle}
+            disabled={loading}
+          />
+
+          <label
+            style={{
+              ...labelStyle,
+              marginTop: "18px",
+            }}
+          >
+            Email
+          </label>
 
           <input
             type="email"
-            placeholder="Enter email"
+            placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={inputStyle}
             disabled={loading}
           />
 
-          {/* Password */}
           <label
             style={{
               ...labelStyle,
-              marginTop: "20px",
+              marginTop: "18px",
             }}
           >
             Password
@@ -136,14 +168,31 @@ export default function Login() {
 
           <input
             type="password"
-            placeholder="Enter password"
+            placeholder="Create a password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={inputStyle}
             disabled={loading}
           />
 
-          {/* Error */}
+          <label
+            style={{
+              ...labelStyle,
+              marginTop: "18px",
+            }}
+          >
+            Confirm Password
+          </label>
+
+          <input
+            type="password"
+            placeholder="Confirm your password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            style={inputStyle}
+            disabled={loading}
+          />
+
           {error && (
             <div
               style={{
@@ -160,47 +209,28 @@ export default function Login() {
             </div>
           )}
 
-          {/* Remember Me / Forgot Password */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: "20px",
-            }}
-          >
-            <label
+          {success && (
+            <div
               style={{
-                color: "#94a3b8",
+                marginTop: "15px",
+                padding: "10px 12px",
+                background: "rgba(34, 197, 94, 0.12)",
+                border: "1px solid #22c55e",
+                borderRadius: "8px",
+                color: "#86efac",
                 fontSize: "14px",
               }}
             >
-              <input
-                type="checkbox"
-                style={{ marginRight: "8px" }}
-                disabled={loading}
-              />
-              Remember Me
-            </label>
+              {success}
+            </div>
+          )}
 
-            <span
-              style={{
-                color: "#3b82f6",
-                fontSize: "14px",
-                cursor: "pointer",
-              }}
-            >
-              Forgot Password?
-            </span>
-          </div>
-<a href="/signup">Don't have an account? Sign up</a>
-          {/* Login */}
           <button
             type="submit"
             disabled={loading}
             style={{
               width: "100%",
-              marginTop: "30px",
+              marginTop: "25px",
               padding: "14px",
               background: loading ? "#64748b" : "#3b82f6",
               color: "white",
@@ -211,21 +241,29 @@ export default function Login() {
               cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "LOGGING IN..." : "LOGIN"}
+            {loading ? "CREATING ACCOUNT..." : "SIGN UP"}
           </button>
         </form>
 
         <p
           style={{
-            color: "#64748b",
+            color: "#94a3b8",
             textAlign: "center",
-            marginTop: "30px",
-            fontSize: "13px",
+            marginTop: "25px",
+            fontSize: "14px",
           }}
         >
-          AI-Based Network Intrusion Detection System
-          <br />
-          Version 1.0
+          Already have an account?{" "}
+          <span
+            onClick={() => navigate("/")}
+            style={{
+              color: "#3b82f6",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+          >
+            Login
+          </span>
         </p>
       </div>
     </div>

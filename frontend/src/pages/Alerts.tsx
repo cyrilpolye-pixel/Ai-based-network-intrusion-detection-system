@@ -1,51 +1,46 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import api from "../services/api";
+import "./Alerts.css";
 
 type Alert = {
-  id: number;
-  time: string;
-  type: string;
-  source: string;
-  severity: "Critical" | "High" | "Medium" | "Low";
-  status: "Blocked" | "Investigating" | "Detected";
+  _id: string;
+  timestamp?: string;
+  attackType?: string;
+  srcIP?: string;
+  severity?: "Critical" | "High" | "Medium" | "Low";
+  status?: "Blocked" | "Investigating" | "Detected";
 };
 
 export default function Alerts() {
-  const [alerts] = useState<Alert[]>([
-    {
-      id: 1,
-      time: "10:30 AM",
-      type: "DDoS Attack",
-      source: "192.168.1.5",
-      severity: "Critical",
-      status: "Blocked",
-    },
-    {
-      id: 2,
-      time: "11:10 AM",
-      type: "Port Scan",
-      source: "192.168.1.8",
-      severity: "Medium",
-      status: "Detected",
-    },
-    {
-      id: 3,
-      time: "11:45 AM",
-      type: "Brute Force",
-      source: "192.168.1.12",
-      severity: "High",
-      status: "Investigating",
-    },
-    {
-      id: 4,
-      time: "12:15 PM",
-      type: "SQL Injection",
-      source: "172.16.0.25",
-      severity: "High",
-      status: "Blocked",
-    },
-  ]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const getSeverityColor = (severity: string) => {
+  const fetchAlerts = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await api.get("/alerts");
+
+      setAlerts(response.data.alerts || []);
+    } catch (err: any) {
+      console.error("Failed to load alerts:", err);
+
+      setError(
+        err.response?.data?.message ||
+          "Unable to load intrusion alerts."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAlerts();
+  }, []);
+
+  const getSeverityColor = (severity?: string) => {
     switch (severity) {
       case "Critical":
         return "#ef4444";
@@ -58,7 +53,7 @@ export default function Alerts() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status?: string) => {
     switch (status) {
       case "Blocked":
         return "#22c55e";
@@ -69,120 +64,109 @@ export default function Alerts() {
     }
   };
 
+  const formatTime = (timestamp?: string) => {
+    if (!timestamp) return "-";
+
+    return new Date(timestamp).toLocaleTimeString();
+  };
+
   return (
-    <div style={{ color: "white" }}>
-      <h1 style={{ marginBottom: "25px" }}>Intrusion Alerts</h1>
+    <div className="alerts-page">
+      <h1 className="alerts-title">
+        Intrusion Alerts
+      </h1>
 
-      <div
-        style={{
-          background: "#1e293b",
-          border: "1px solid #334155",
-          borderRadius: "12px",
-          overflow: "hidden",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-          }}
-        >
-          <thead>
-            <tr
-              style={{
-                background: "#111827",
-              }}
-            >
-              <th style={headerStyle}>Time</th>
-              <th style={headerStyle}>Attack Type</th>
-              <th style={headerStyle}>Source IP</th>
-              <th style={headerStyle}>Severity</th>
-              <th style={headerStyle}>Status</th>
-            </tr>
-          </thead>
+      {error && (
+        <div className="alerts-error">
+          {error}
+        </div>
+      )}
 
-          <tbody>
-            {alerts.map((alert) => (
-              <tr
-                key={alert.id}
-                style={{
-                  borderBottom: "1px solid #334155",
-                }}
-              >
-                <td style={cellStyle}>{alert.time}</td>
-
-                <td style={cellStyle}>{alert.type}</td>
-
-                <td style={cellStyle}>{alert.source}</td>
-
-                <td
-                  style={{
-                    ...cellStyle,
-                    color: getSeverityColor(alert.severity),
-                    fontWeight: "bold",
-                  }}
-                >
-                  {alert.severity}
-                </td>
-
-                <td
-                  style={{
-                    ...cellStyle,
-                    color: getStatusColor(alert.status),
-                    fontWeight: "bold",
-                  }}
-                >
-                  {alert.status}
-                </td>
+      <div className="alerts-table-container">
+        {loading ? (
+          <div className="alerts-message">
+            Loading intrusion alerts...
+          </div>
+        ) : alerts.length === 0 ? (
+          <div className="alerts-message">
+            No intrusion alerts found.
+          </div>
+        ) : (
+          <table className="alerts-table">
+            <thead>
+              <tr>
+                <th className="alerts-header">Time</th>
+                <th className="alerts-header">Attack Type</th>
+                <th className="alerts-header">Source IP</th>
+                <th className="alerts-header">Severity</th>
+                <th className="alerts-header">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              {alerts.map((alert) => (
+                <tr
+                  key={alert._id}
+                  className="alerts-row"
+                >
+                  <td className="alerts-cell">
+                    {formatTime(alert.timestamp)}
+                  </td>
+
+                  <td className="alerts-cell">
+                    {alert.attackType || "-"}
+                  </td>
+
+                  <td className="alerts-cell">
+                    {alert.srcIP || "-"}
+                  </td>
+
+                  <td
+                    className="alerts-cell alert-severity"
+                    style={{
+                      color: getSeverityColor(
+                        alert.severity
+                      ),
+                    }}
+                  >
+                    {alert.severity || "-"}
+                  </td>
+
+                  <td
+                    className="alerts-cell alert-status"
+                    style={{
+                      color: getStatusColor(
+                        alert.status
+                      ),
+                    }}
+                  >
+                    {alert.status || "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      <div
-        style={{
-          marginTop: "25px",
-          display: "flex",
-          gap: "20px",
-        }}
-      >
-        <button style={primaryButton}>
-          Refresh Alerts
+      <div className="alerts-actions">
+        <button
+          className="primary-button"
+          onClick={fetchAlerts}
+          disabled={loading}
+        >
+          {loading ? "Refreshing..." : "Refresh Alerts"}
         </button>
 
-        <button style={secondaryButton}>
+        <button
+          className="secondary-button"
+          onClick={() => {
+            console.log("Export Alerts will be implemented next.");
+          }}
+        >
           Export Alerts
         </button>
       </div>
     </div>
   );
 }
-
-const headerStyle = {
-  padding: "15px",
-  textAlign: "left" as const,
-  color: "#cbd5e1",
-};
-
-const cellStyle = {
-  padding: "15px",
-};
-
-const primaryButton = {
-  background: "#3b82f6",
-  color: "white",
-  border: "none",
-  padding: "10px 18px",
-  borderRadius: "8px",
-  cursor: "pointer",
-};
-
-const secondaryButton = {
-  background: "#334155",
-  color: "white",
-  border: "none",
-  padding: "10px 18px",
-  borderRadius: "8px",
-  cursor: "pointer",
-};
