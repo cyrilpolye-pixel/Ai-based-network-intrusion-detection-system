@@ -41,3 +41,81 @@ backend/*.db
 # OS
 .DS_Store
 Thumbs.db
+
+# =========================
+# Dependencies
+# =========================
+
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# =========================
+# Environment variables
+# =========================
+
+.env
+.env.*
+!.env.example
+
+# =========================
+# Build output
+# =========================
+
+dist/
+build/
+frontend/dist/
+
+# =========================
+# Python
+# =========================
+
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.python-version
+
+# =========================
+# ML datasets
+# =========================
+
+ml-service/data/*
+!ml-service/data/.gitkeep
+
+# =========================
+# Trained ML models
+# =========================
+
+ml-service/models/*
+!ml-service/models/.gitkeep
+
+# =========================
+# Python generated files
+# =========================
+
+*.pkl
+*.joblib
+*.pickle
+
+# =========================
+# Logs
+# =========================
+
+*.log
+
+# =========================
+# OS files
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE
+# =========================
+
+.vscode/
+.idea/
