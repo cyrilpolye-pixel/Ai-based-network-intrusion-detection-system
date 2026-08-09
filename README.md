@@ -145,3 +145,22 @@ Upcoming:
 ## 📜 License
 
 This project is developed for academic and educational purposes.
+
+datasheet
+CICIDS2017 
+
+Iman Sharafaldin, Arash Habibi Lashkari, and Ali A. Ghorbani, “Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization”, 4th International Conference on Information Systems Security and Privacy (ICISSP), Portugal, January 2018.
+
+usable algorithms
+| Algorithm               | Difficulty      | Good for CICIDS2017?         | Our project                  |
+| ----------------------- | --------------- | ---------------------------- | ---------------------------- |
+| **Random Forest**       | ⭐⭐ Easy         | ✅ Very good                  | **Excellent**                |
+| **Decision Tree**       | ⭐ Easy          | ✅ Good                       | Good baseline                |
+| **XGBoost**             | ⭐⭐⭐ Medium      | ✅ Very good                  | **Excellent**                |
+| **Logistic Regression** | ⭐ Easy          | ✅ Good baseline              | Useful comparison            |
+| **SVM**                 | ⭐⭐⭐ Medium/Hard | ✅ Yes                        | Less attractive for our size |
+| **KNN**                 | ⭐⭐ Medium       | ✅ Possible                   | Not a first choice          |
+| **Naive Bayes**         | ⭐⭐ Easy         | ✅ Possible                   | Baseline                     |
+| **Isolation Forest**    | ⭐⭐ Medium       | ✅ Good for anomaly detection | **Interesting**              |
+| **Neural Network/MLP**  | ⭐⭐⭐⭐ Harder     | ✅ Yes                        | Probably unnecessary         |
+| **Hybrid RF + XGBoost** | ⭐⭐⭐⭐            | ✅                            | **Very good project option** |
