@@ -5,7 +5,7 @@ require("dotenv").config();
 const trafficRoutes = require("./routes/trafficRoutes");
 const authRoutes = require("./routes/authRoutes");
 const alertRoutes = require("./routes/alertRoutes");
-
+const aiRoutes = require("./routes/aiRoutes");
 
 
 
@@ -27,7 +27,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/traffic", trafficRoutes);
 app.use("/api/alerts", alertRoutes);
-
+app.use("/api/ai", aiRoutes);
 
 
 
