@@ -8,6 +8,7 @@ type TrafficLog = {
   destination: string;
   protocol: string;
   status: "Normal" | "Suspicious";
+  attackType: string;
   time: string;
 };
 
@@ -32,24 +33,41 @@ const LiveMonitoring = () => {
       setConnected(false);
     };
 
-    /*
-     * Backend will emit traffic updates using
-     * the "traffic-update" event.
-     */
     const handleTrafficUpdate = (data: any) => {
+      const prediction = String(
+        data.prediction || data.label || ""
+      ).toLowerCase();
+
+      const isSuspicious =
+        prediction !== "" &&
+        prediction !== "normal" &&
+        prediction !== "benign" &&
+        prediction !== "unknown" &&
+        prediction !== "pending";
+
       const newLog: TrafficLog = {
-        id: data._id || `${Date.now()}-${Math.random()}`,
+        id:
+          data._id ||
+          `${Date.now()}-${Math.random()}`,
+
         source: data.srcIP || "-",
+
         destination: data.dstIP || "-",
+
         protocol: data.protocol || "-",
-        status:
-          data.prediction?.toLowerCase() === "attack" ||
-          data.label?.toLowerCase() === "attack" ||
-          data.label?.toLowerCase() === "anomaly"
-            ? "Suspicious"
-            : "Normal",
+
+        status: isSuspicious
+          ? "Suspicious"
+          : "Normal",
+
+        attackType: isSuspicious
+          ? data.prediction || data.label || "Unknown"
+          : "BENIGN",
+
         time: data.timestamp
-          ? new Date(data.timestamp).toLocaleTimeString()
+          ? new Date(
+              data.timestamp
+            ).toLocaleTimeString()
           : new Date().toLocaleTimeString(),
       };
 
@@ -61,12 +79,21 @@ const LiveMonitoring = () => {
 
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
-    socket.on("traffic-update", handleTrafficUpdate);
+    socket.on(
+      "traffic-update",
+      handleTrafficUpdate
+    );
 
     return () => {
       socket.off("connect", handleConnect);
-      socket.off("disconnect", handleDisconnect);
-      socket.off("traffic-update", handleTrafficUpdate);
+      socket.off(
+        "disconnect",
+        handleDisconnect
+      );
+      socket.off(
+        "traffic-update",
+        handleTrafficUpdate
+      );
 
       socket.disconnect();
     };
@@ -88,6 +115,7 @@ const LiveMonitoring = () => {
       <div className="live-header">
         <div>
           <h1>Live Monitoring</h1>
+
           <p>
             Real-time network traffic monitoring
           </p>
@@ -99,19 +127,25 @@ const LiveMonitoring = () => {
           }`}
         >
           <span className="status-dot" />
-          {connected ? "Connected" : "Disconnected"}
+
+          {connected
+            ? "Connected"
+            : "Disconnected"}
         </div>
       </div>
 
-      {/* Status Cards */}
       <div className="live-cards">
         <div className="live-card">
           <h3>Live Connections</h3>
-          <strong>{connected ? logs.length : 0}</strong>
+
+          <strong>
+            {connected ? logs.length : 0}
+          </strong>
         </div>
 
         <div className="live-card">
           <h3>Threat Level</h3>
+
           <strong
             className={`threat-${threatLevel.toLowerCase()}`}
           >
@@ -121,11 +155,13 @@ const LiveMonitoring = () => {
 
         <div className="live-card">
           <h3>Suspicious Events</h3>
-          <strong>{suspiciousCount}</strong>
+
+          <strong>
+            {suspiciousCount}
+          </strong>
         </div>
       </div>
 
-      {/* Live Traffic */}
       <div className="live-section">
         <h2>Live Traffic</h2>
 
@@ -146,6 +182,7 @@ const LiveMonitoring = () => {
                   <th>Source</th>
                   <th>Destination</th>
                   <th>Protocol</th>
+                  <th>Attack Type</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -154,13 +191,24 @@ const LiveMonitoring = () => {
                 {logs.map((log) => (
                   <tr key={log.id}>
                     <td>{log.time}</td>
+
                     <td>{log.source}</td>
-                    <td>{log.destination}</td>
+
+                    <td>
+                      {log.destination}
+                    </td>
+
                     <td>{log.protocol}</td>
+
+                    <td>
+                      {log.attackType}
+                    </td>
+
                     <td>
                       <span
                         className={`traffic-status ${
-                          log.status === "Suspicious"
+                          log.status ===
+                          "Suspicious"
                             ? "suspicious"
                             : "normal"
                         }`}
@@ -180,4 +228,3 @@ const LiveMonitoring = () => {
 };
 
 export default LiveMonitoring;
-

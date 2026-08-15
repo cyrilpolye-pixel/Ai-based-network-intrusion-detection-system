@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import socket from "../services/socket";
 import "./Alerts.css";
 
 type Alert = {
@@ -39,6 +40,26 @@ export default function Alerts() {
 
   useEffect(() => {
     fetchAlerts();
+
+    const handleNewAlert = (newAlert: Alert) => {
+      setAlerts((previous) => {
+        const alreadyExists = previous.some(
+          (alert) => alert._id === newAlert._id
+        );
+
+        if (alreadyExists) {
+          return previous;
+        }
+
+        return [newAlert, ...previous];
+      });
+    };
+
+    socket.on("alert-created", handleNewAlert);
+
+    return () => {
+      socket.off("alert-created", handleNewAlert);
+    };
   }, []);
 
   const updateStatus = async (
@@ -46,7 +67,7 @@ export default function Alerts() {
     status: "Unread" | "Read" | "Resolved"
   ) => {
     try {
-      await api.patch(`/alerts/${id}`, { status });
+      await api.put(`/alerts/${id}`, { status });
 
       setAlerts((previous) =>
         previous.map((alert) =>
@@ -69,10 +90,13 @@ export default function Alerts() {
     switch (severity) {
       case "Critical":
         return "severity-critical";
+
       case "High":
         return "severity-high";
+
       case "Medium":
         return "severity-medium";
+
       default:
         return "severity-low";
     }
@@ -82,8 +106,10 @@ export default function Alerts() {
     switch (status) {
       case "Resolved":
         return "status-resolved";
+
       case "Read":
         return "status-read";
+
       default:
         return "status-unread";
     }
@@ -94,6 +120,7 @@ export default function Alerts() {
       <div className="alerts-header">
         <div>
           <h1>Intrusion Alerts</h1>
+
           <p>
             Monitor and manage detected security threats.
           </p>

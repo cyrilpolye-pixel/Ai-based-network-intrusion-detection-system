@@ -1,240 +1,350 @@
-type Report = {
-  id: number;
-  name: string;
-  date: string;
-  status: "Generated" | "Pending" | "Failed";
-  size: string;
+import { useEffect, useState } from "react";
+import api from "../services/api";
+import "./Reports.css";
+
+type Alert = {
+  _id: string;
+  attackType?: string;
+  severity?: string;
+  status?: string;
+  createdAt?: string;
+};
+
+type Traffic = {
+  _id: string;
+  prediction?: string;
+  confidence?: number;
+  createdAt?: string;
 };
 
 export default function Reports() {
-  const reports: Report[] = [
-    {
-      id: 1,
-      name: "Daily Traffic Report",
-      date: "28 Jul 2026",
-      status: "Generated",
-      size: "2.4 MB",
-    },
-    {
-      id: 2,
-      name: "Intrusion Summary",
-      date: "27 Jul 2026",
-      status: "Generated",
-      size: "1.8 MB",
-    },
-    {
-      id: 3,
-      name: "Weekly Analysis",
-      date: "26 Jul 2026",
-      status: "Pending",
-      size: "--",
-    },
-    {
-      id: 4,
-      name: "System Health Report",
-      date: "25 Jul 2026",
-      status: "Failed",
-      size: "--",
-    },
-  ];
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [traffic, setTraffic] = useState<Traffic[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Generated":
-        return "#22c55e";
-      case "Pending":
-        return "#f59e0b";
-      default:
-        return "#ef4444";
+  const loadReports = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const [alertsResponse, trafficResponse] =
+        await Promise.all([
+          api.get("/alerts"),
+          api.get("/traffic"),
+        ]);
+
+      setAlerts(alertsResponse.data.alerts || []);
+      setTraffic(trafficResponse.data.traffic || []);
+    } catch (err: any) {
+      console.error("Reports loading error:", err);
+
+      setError(
+        err.response?.data?.message ||
+          "Unable to load report data."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  const generatedReports = alerts.length > 0 ? 1 : 0;
+
+  const attackTraffic = traffic.filter(
+    (item) =>
+      item.prediction &&
+      item.prediction.toUpperCase() !== "BENIGN"
+  ).length;
+
+  const normalTraffic = traffic.filter(
+    (item) =>
+      item.prediction?.toUpperCase() === "BENIGN"
+  ).length;
+
+  const criticalAlerts = alerts.filter(
+    (alert) =>
+      alert.severity === "Critical"
+  ).length;
+
+  const formatDate = (date?: string) => {
+    if (!date) {
+      return "-";
+    }
+
+    return new Date(date).toLocaleString();
+  };
+
   return (
-    <div style={{ color: "white" }}>
-      <h1 style={{ marginBottom: "25px" }}>Reports</h1>
+    <div className="reports-page">
 
-      {/* Summary Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3,1fr)",
-          gap: "20px",
-          marginBottom: "25px",
-        }}
-      >
-        <Card title="Generated Reports" value="28" />
+      {/* Header */}
+      <div className="reports-header">
 
-        <Card title="Pending Reports" value="3" />
+        <div>
+          <h1>Reports</h1>
 
-        <Card title="Failed Reports" value="1" />
-      </div>
+          <p>
+            Network security and intrusion detection
+            reports.
+          </p>
+        </div>
 
-      {/* Reports Table */}
-
-      <div
-        style={{
-          background: "#1e293b",
-          border: "1px solid #334155",
-          borderRadius: "12px",
-          overflow: "hidden",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-          }}
+        <button
+          className="reports-refresh-button"
+          onClick={loadReports}
+          disabled={loading}
         >
-          <thead>
-            <tr
-              style={{
-                background: "#111827",
-              }}
-            >
-              <th style={headerStyle}>Report</th>
-              <th style={headerStyle}>Date</th>
-              <th style={headerStyle}>Size</th>
-              <th style={headerStyle}>Status</th>
-              <th style={headerStyle}>Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {reports.map((report) => (
-              <tr
-                key={report.id}
-                style={{
-                  borderBottom: "1px solid #334155",
-                }}
-              >
-                <td style={cellStyle}>{report.name}</td>
-
-                <td style={cellStyle}>{report.date}</td>
-
-                <td style={cellStyle}>{report.size}</td>
-
-                <td
-                  style={{
-                    ...cellStyle,
-                    color: getStatusColor(report.status),
-                    fontWeight: "bold",
-                  }}
-                >
-                  {report.status}
-                </td>
-
-                <td style={cellStyle}>
-                  {report.status === "Generated" ? (
-                    <button style={downloadButton}>
-                      Download
-                    </button>
-                  ) : (
-                    <button
-                      style={disabledButton}
-                      disabled
-                    >
-                      Unavailable
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Bottom Buttons */}
-
-      <div
-        style={{
-          display: "flex",
-          gap: "20px",
-          marginTop: "25px",
-        }}
-      >
-        <button style={primaryButton}>
-          Generate New Report
+          {loading
+            ? "Refreshing..."
+            : "Refresh"}
         </button>
 
-        <button style={secondaryButton}>
-          Export All
-        </button>
       </div>
+
+      {error && (
+        <div className="reports-error">
+          {error}
+        </div>
+      )}
+
+      {/* Summary */}
+      <div className="reports-summary">
+
+        <div className="reports-card">
+          <span>Traffic Records</span>
+
+          <strong>
+            {loading
+              ? "..."
+              : traffic.length}
+          </strong>
+        </div>
+
+        <div className="reports-card">
+          <span>Attacks Detected</span>
+
+          <strong>
+            {loading
+              ? "..."
+              : attackTraffic}
+          </strong>
+        </div>
+
+        <div className="reports-card">
+          <span>Normal Traffic</span>
+
+          <strong>
+            {loading
+              ? "..."
+              : normalTraffic}
+          </strong>
+        </div>
+
+        <div className="reports-card">
+          <span>Critical Alerts</span>
+
+          <strong>
+            {loading
+              ? "..."
+              : criticalAlerts}
+          </strong>
+        </div>
+
+      </div>
+
+      {/* Security Report */}
+      <div className="reports-panel">
+
+        <div className="reports-panel-header">
+
+          <div>
+            <h2>
+              Security Analysis Report
+            </h2>
+
+            <p>
+              Current system analysis based on
+              recorded network traffic.
+            </p>
+          </div>
+
+          <span className="reports-generated">
+            {generatedReports > 0
+              ? "Available"
+              : "No Data"}
+          </span>
+
+        </div>
+
+        {loading ? (
+          <div className="reports-empty">
+            Loading report data...
+          </div>
+        ) : traffic.length === 0 ? (
+          <div className="reports-empty">
+            No traffic data is available to
+            generate a report.
+          </div>
+        ) : (
+          <div className="report-analysis">
+
+            <div className="analysis-row">
+              <span>Total Traffic</span>
+              <strong>
+                {traffic.length}
+              </strong>
+            </div>
+
+            <div className="analysis-row">
+              <span>Normal Traffic</span>
+              <strong>
+                {normalTraffic}
+              </strong>
+            </div>
+
+            <div className="analysis-row">
+              <span>Attacks Detected</span>
+              <strong className="analysis-danger">
+                {attackTraffic}
+              </strong>
+            </div>
+
+            <div className="analysis-row">
+              <span>Critical Alerts</span>
+              <strong className="analysis-danger">
+                {criticalAlerts}
+              </strong>
+            </div>
+
+            <div className="analysis-row">
+              <span>Total Alerts</span>
+              <strong>
+                {alerts.length}
+              </strong>
+            </div>
+
+          </div>
+        )}
+
+      </div>
+
+      {/* Verified Attacks */}
+      <div className="reports-panel">
+
+        <div className="reports-panel-header">
+
+          <div>
+            <h2>
+              Verified Attack Records
+            </h2>
+
+            <p>
+              Attacks detected by the AI-NIDS
+              prediction pipeline.
+            </p>
+          </div>
+
+        </div>
+
+        {loading ? (
+          <div className="reports-empty">
+            Loading attack records...
+          </div>
+        ) : alerts.length === 0 ? (
+          <div className="reports-empty">
+            No verified attacks found.
+          </div>
+        ) : (
+          <div className="reports-table-wrapper">
+
+            <table className="reports-table">
+
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Attack Type</th>
+                  <th>Severity</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                {alerts.map((alert) => (
+                  <tr key={alert._id}>
+
+                    <td>
+                      {formatDate(
+                        alert.createdAt
+                      )}
+                    </td>
+
+                    <td className="report-attack">
+                      {alert.attackType ||
+                        "Unknown"}
+                    </td>
+
+                    <td>
+                      <span
+                        className={`report-badge report-severity-${(
+                          alert.severity ||
+                          "Low"
+                        ).toLowerCase()}`}
+                      >
+                        {alert.severity ||
+                          "Low"}
+                      </span>
+                    </td>
+
+                    <td>
+                      <span
+                        className={`report-badge report-status-${(
+                          alert.status ||
+                          "Unread"
+                        ).toLowerCase()}`}
+                      >
+                        {alert.status ||
+                          "Unread"}
+                      </span>
+                    </td>
+
+                  </tr>
+                ))}
+
+              </tbody>
+
+            </table>
+
+          </div>
+        )}
+
+      </div>
+
+      {/* Actions */}
+      <div className="reports-actions">
+
+        <button
+          className="reports-primary-button"
+          onClick={loadReports}
+        >
+          Generate Current Report
+        </button>
+
+        <button
+          className="reports-secondary-button"
+          onClick={() =>
+            window.print()
+          }
+        >
+          Export / Print
+        </button>
+
+      </div>
+
     </div>
   );
 }
-
-type CardProps = {
-  title: string;
-  value: string;
-};
-
-function Card({ title, value }: CardProps) {
-  return (
-    <div
-      style={{
-        background: "#1e293b",
-        border: "1px solid #334155",
-        borderRadius: "12px",
-        padding: "20px",
-      }}
-    >
-      <h3
-        style={{
-          color: "#94a3b8",
-          marginBottom: "10px",
-        }}
-      >
-        {title}
-      </h3>
-
-      <h1>{value}</h1>
-    </div>
-  );
-}
-
-const headerStyle = {
-  padding: "15px",
-  textAlign: "left" as const,
-  color: "#cbd5e1",
-};
-
-const cellStyle = {
-  padding: "15px",
-};
-
-const primaryButton = {
-  background: "#3b82f6",
-  color: "white",
-  border: "none",
-  padding: "10px 18px",
-  borderRadius: "8px",
-  cursor: "pointer",
-};
-
-const secondaryButton = {
-  background: "#334155",
-  color: "white",
-  border: "none",
-  padding: "10px 18px",
-  borderRadius: "8px",
-  cursor: "pointer",
-};
-
-const downloadButton = {
-  background: "#22c55e",
-  color: "white",
-  border: "none",
-  padding: "8px 14px",
-  borderRadius: "6px",
-  cursor: "pointer",
-};
-
-const disabledButton = {
-  background: "#475569",
-  color: "#cbd5e1",
-  border: "none",
-  padding: "8px 14px",
-  borderRadius: "6px",
-  cursor: "not-allowed",
-};
