@@ -1,5 +1,20 @@
 import { useEffect, useState } from "react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
+
 import api from "../services/api";
+import "./Dashboard.css";
 
 type DashboardStats = {
   totalTraffic: number;
@@ -30,250 +45,341 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await api.get("/dashboard/stats");
+
+      setStats(response.data.stats);
+
+      setAlerts(
+        response.data.recentAlerts?.slice(0, 5) || []
+      );
+    } catch (err: any) {
+      console.error("Dashboard loading error:", err);
+
+      setError(
+        err.response?.data?.message ||
+          "Unable to load dashboard data."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const statsResponse = await api.get("/dashboard/stats");
-
-        setStats(statsResponse.data.stats);
-
-        setAlerts(
-          statsResponse.data.recentAlerts?.slice(0, 5) || []
-        );
-      } catch (err: any) {
-        console.error("Dashboard loading error:", err);
-
-        setError(
-          err.response?.data?.message ||
-            "Unable to load dashboard data."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadDashboard();
   }, []);
+
+  /*
+   * Pie chart:
+   * Normal traffic vs attack traffic
+   */
+  const trafficData = [
+    {
+      name: "Normal",
+      value: stats.normalTraffic,
+    },
+    {
+      name: "Attack",
+      value: stats.attackTraffic,
+    },
+  ];
+
+  /*
+   * Bar chart:
+   * Total detected threats vs critical threats
+   */
+  const threatData = [
+    {
+      name: "Detected",
+      value: stats.totalAlerts,
+    },
+    {
+      name: "Critical",
+      value: stats.criticalAlerts,
+    },
+  ];
 
   const statCards = [
     {
       title: "Total Traffic",
-      value: stats.totalTraffic.toLocaleString(),
+      value: stats.totalTraffic,
+      className: "dashboard-card-blue",
     },
     {
       title: "Threats Detected",
-      value: stats.totalAlerts.toLocaleString(),
+      value: stats.totalAlerts,
+      className: "dashboard-card-red",
     },
     {
       title: "Critical Threats",
-      value: stats.criticalAlerts.toLocaleString(),
+      value: stats.criticalAlerts,
+      className: "dashboard-card-orange",
     },
     {
       title: "Normal Traffic",
-      value: stats.normalTraffic.toLocaleString(),
+      value: stats.normalTraffic,
+      className: "dashboard-card-green",
     },
   ];
 
   return (
-    <div>
-      <h1
-        style={{
-          color: "white",
-          marginBottom: "25px",
-        }}
-      >
-        Dashboard
-      </h1>
+    <div className="dashboard-page">
+
+      {/* Header */}
+      <div className="dashboard-header">
+        <div>
+          <h1>Dashboard</h1>
+
+          <p>
+            AI-NIDS network security overview
+          </p>
+        </div>
+
+        <button
+          className="dashboard-refresh"
+          onClick={loadDashboard}
+          disabled={loading}
+        >
+          {loading ? "Refreshing..." : "Refresh"}
+        </button>
+      </div>
 
       {/* Error */}
       {error && (
-        <div
-          style={{
-            background: "rgba(239,68,68,0.12)",
-            border: "1px solid #ef4444",
-            color: "#fca5a5",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-          }}
-        >
+        <div className="dashboard-error">
           {error}
         </div>
       )}
 
       {/* Statistics */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "20px",
-        }}
-      >
+      <div className="dashboard-stat-grid">
+
         {statCards.map((card) => (
           <div
             key={card.title}
-            style={{
-              background: "#1e293b",
-              padding: "20px",
-              borderRadius: "10px",
-              color: "white",
-              border: "1px solid #334155",
-            }}
+            className={`dashboard-stat-card ${card.className}`}
           >
-            <h3
-              style={{
-                color: "#94a3b8",
-                marginBottom: "10px",
-              }}
-            >
+            <div className="dashboard-stat-title">
               {card.title}
-            </h3>
+            </div>
 
-            <h1 style={{ margin: 0 }}>
-              {loading ? "..." : card.value}
-            </h1>
+            <div className="dashboard-stat-value">
+              {loading
+                ? "..."
+                : card.value.toLocaleString()}
+            </div>
           </div>
         ))}
+
       </div>
 
       {/* Charts */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "2fr 1fr",
-          gap: "20px",
-          marginTop: "30px",
-        }}
-      >
-        {/* Network Traffic */}
-        <div
-          style={{
-            background: "#1e293b",
-            height: "320px",
-            borderRadius: "10px",
-            padding: "20px",
-            color: "white",
-            border: "1px solid #334155",
-          }}
-        >
-          <h2>Network Traffic</h2>
+      <div className="dashboard-chart-grid">
 
-          <div
-            style={{
-              height: "230px",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              color: "#94a3b8",
-            }}
-          >
-            Network traffic chart will be connected next.
+        {/* Traffic Pie Chart */}
+        <div className="dashboard-panel">
+
+          <div className="dashboard-panel-header">
+            <div>
+              <h2>Traffic Distribution</h2>
+
+              <span>
+                Normal vs detected attacks
+              </span>
+            </div>
+          </div>
+
+          <div className="dashboard-chart">
+
+            {stats.totalTraffic === 0 ? (
+              <div className="dashboard-no-data">
+                No traffic data available.
+              </div>
+            ) : (
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
+                <PieChart>
+
+                  <Pie
+                    data={trafficData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={95}
+                    label
+                  >
+                    {trafficData.map((entry) => (
+                      <Cell key={entry.name} />
+                    ))}
+                  </Pie>
+
+                  <Tooltip />
+
+                  <Legend />
+
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+
           </div>
         </div>
 
-        {/* Threat Distribution */}
-        <div
-          style={{
-            background: "#1e293b",
-            height: "320px",
-            borderRadius: "10px",
-            padding: "20px",
-            color: "white",
-            border: "1px solid #334155",
-          }}
-        >
-          <h2>Threat Distribution</h2>
+        {/* Threat Bar Chart */}
+        <div className="dashboard-panel">
 
-          <div
-            style={{
-              height: "230px",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              color: "#94a3b8",
-            }}
-          >
-            Threat distribution chart will be connected next.
+          <div className="dashboard-panel-header">
+            <div>
+              <h2>Threat Overview</h2>
+
+              <span>
+                Verified security threats
+              </span>
+            </div>
+          </div>
+
+          <div className="dashboard-chart">
+
+            {stats.totalAlerts === 0 ? (
+              <div className="dashboard-no-data">
+                No threats detected.
+              </div>
+            ) : (
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
+                <BarChart data={threatData}>
+
+                  <CartesianGrid />
+
+                  <XAxis
+                    dataKey="name"
+                  />
+
+                  <YAxis
+                    allowDecimals={false}
+                  />
+
+                  <Tooltip />
+
+                  <Bar
+                    dataKey="value"
+                    name="Count"
+                  />
+
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+
           </div>
         </div>
+
       </div>
 
-      {/* Recent Alerts */}
-      <div
-        style={{
-          marginTop: "30px",
-          background: "#1e293b",
-          borderRadius: "10px",
-          padding: "20px",
-          color: "white",
-          border: "1px solid #334155",
-        }}
-      >
-        <h2>Recent Intrusion Alerts</h2>
+      {/* Verified Attacks */}
+      <div className="dashboard-panel dashboard-alert-panel">
+
+        <div className="dashboard-panel-header">
+
+          <div>
+            <h2>
+              Verified Intrusion Alerts
+            </h2>
+
+            <span>
+              Latest detected security threats
+            </span>
+          </div>
+
+          <span>
+            {stats.totalAlerts} detected
+          </span>
+
+        </div>
 
         {loading ? (
-          <p style={{ color: "#94a3b8" }}>
-            Loading alerts...
-          </p>
+          <div className="dashboard-no-data">
+            Loading verified attacks...
+          </div>
         ) : alerts.length === 0 ? (
-          <p style={{ color: "#94a3b8" }}>
-            No intrusion alerts found.
-          </p>
+          <div className="dashboard-no-data">
+            No verified attacks found.
+          </div>
         ) : (
-          <table
-            style={{
-              width: "100%",
-              marginTop: "20px",
-              borderCollapse: "collapse",
-            }}
-          >
-            <thead>
-              <tr>
-                <th align="left">Time</th>
-                <th align="left">Attack</th>
-                <th align="left">Severity</th>
-                <th align="left">Status</th>
-              </tr>
-            </thead>
+          <div className="dashboard-table-wrapper">
 
-            <tbody>
-              {alerts.map((alert) => (
-                <tr key={alert._id}>
-                  <td style={cellStyle}>
-                    {alert.createdAt
-                      ? new Date(
-                          alert.createdAt
-                        ).toLocaleTimeString()
-                      : "-"}
-                  </td>
+            <table className="dashboard-table">
 
-                  <td style={cellStyle}>
-                    {alert.attackType || "Unknown"}
-                  </td>
-
-                  <td style={cellStyle}>
-                    {alert.severity || "-"}
-                  </td>
-
-                  <td style={cellStyle}>
-                    {alert.status || "-"}
-                  </td>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Attack Type</th>
+                  <th>Severity</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+
+                {alerts.map((alert) => (
+                  <tr key={alert._id}>
+
+                    <td>
+                      {alert.createdAt
+                        ? new Date(
+                            alert.createdAt
+                          ).toLocaleString()
+                        : "-"}
+                    </td>
+
+                    <td className="dashboard-attack">
+                      {alert.attackType ||
+                        "Unknown"}
+                    </td>
+
+                    <td>
+                      <span
+                        className={`dashboard-badge dashboard-severity-${(
+                          alert.severity ||
+                          "Low"
+                        ).toLowerCase()}`}
+                      >
+                        {alert.severity ||
+                          "Low"}
+                      </span>
+                    </td>
+
+                    <td>
+                      <span
+                        className={`dashboard-badge dashboard-status-${(
+                          alert.status ||
+                          "Unread"
+                        ).toLowerCase()}`}
+                      >
+                        {alert.status ||
+                          "Unread"}
+                      </span>
+                    </td>
+
+                  </tr>
+                ))}
+
+              </tbody>
+
+            </table>
+
+          </div>
         )}
+
       </div>
+
     </div>
   );
 }
-
-const cellStyle = {
-  padding: "12px 8px",
-  borderTop: "1px solid #334155",
-  color: "#cbd5e1",
-};
-

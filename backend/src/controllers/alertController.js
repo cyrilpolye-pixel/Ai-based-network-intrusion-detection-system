@@ -44,7 +44,7 @@ const updateAlertStatus = async (req, res) => {
     const alert = await Alert.findByIdAndUpdate(
       req.params.id,
       { status: req.body.status },
-      { new: true }
+      {  returnDocument: "after" }
     );
 
     if (!alert) {
