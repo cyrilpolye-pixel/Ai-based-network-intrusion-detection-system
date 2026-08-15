@@ -22,3 +22,22 @@ Final testing and deployment
 🔄 Model information/training integration
 🔄 Proper error/loading/auth handling
 🔄 Security and deployment configuration
+
+
+
+
+Next order
+Traffic Analysis — current page; verify it against the real traffic records.
+Reports — replace the current dummy/static report data with useful project data.
+Profile — verify/fix user data and authentication connection.
+Settings — verify the page and decide which settings actually need backend support.
+Incident Details — connect it to the actual alert/traffic record.
+Authentication — test login/register/logout and protected routes.
+Full integration test:
+Frontend → Backend
+Backend → MongoDB Atlas
+Backend → ML service
+ML prediction → TrafficLog
+Prediction → Alert
+Socket.IO → Live Monitoring
+Final cleanup — errors, warnings, API consistency, .env, Git, and startup procedure.
