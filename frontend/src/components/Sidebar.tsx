@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const menuItems = [
   { name: "Dashboard", path: "/dashboard" },
@@ -11,6 +12,14 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/", { replace: true });
+  };
+
   return (
     <div
       style={{
@@ -45,6 +54,7 @@ export default function Sidebar() {
       <div style={{ flex: 1 }} />
 
       <button
+        onClick={handleLogout}
         style={{
           padding: "12px",
           background: "#ef4444",
