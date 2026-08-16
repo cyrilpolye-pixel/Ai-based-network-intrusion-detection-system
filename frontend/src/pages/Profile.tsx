@@ -1,190 +1,152 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import "./Profile.css";
+
+type ProfileUser = {
+  _id?: string;
+  id?: string;
+  name: string;
+  email: string;
+  role: string;
+};
 
 export default function Profile() {
-  const [profile, setProfile] = useState({
-    name: "Admin User",
-    email: "admin@example.com",
-    phone: "+91 9876543210",
-    role: "System Administrator",
-    department: "Cyber Security",
-    lastLogin: "28 Jul 2026, 09:15 AM",
-    status: "Active",
-  });
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const { name, value } = e.target;
+  const [profile, setProfile] = useState<ProfileUser | null>(user);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-    setProfile((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProfile = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await api.get("/auth/profile");
+        const currentUser = response.data?.user;
+
+        if (!currentUser) {
+          throw new Error("Profile response did not include user data.");
+        }
+
+        if (isMounted) {
+          setProfile(currentUser);
+        }
+      } catch (err: any) {
+        const message =
+          err.response?.data?.message ||
+          "Unable to load your profile. Please try again.";
+
+        if (isMounted) {
+          setError(message);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/", { replace: true });
   };
 
-  const handleSave = () => {
-    console.log(profile);
-    alert("Profile updated successfully!");
-  };
+  if (loading) {
+    return (
+      <ProfileShell>
+        <StatusMessage>Loading your profile...</StatusMessage>
+      </ProfileShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <ProfileShell>
+        <StatusMessage tone="error">{error}</StatusMessage>
+        <button onClick={handleLogout} className="profile-button">
+          Logout
+        </button>
+      </ProfileShell>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <ProfileShell>
+        <StatusMessage tone="error">No profile data is available.</StatusMessage>
+        <button onClick={handleLogout} className="profile-button">
+          Logout
+        </button>
+      </ProfileShell>
+    );
+  }
 
   return (
-    <div style={{ color: "white" }}>
-      <h1 style={{ marginBottom: "25px" }}>Profile</h1>
-
-      <div
-        style={{
-          display: "flex",
-          gap: "25px",
-          flexWrap: "wrap",
-        }}
-      >
-        {/* Left Card */}
-
-        <div
-          style={{
-            width: "280px",
-            background: "#1e293b",
-            border: "1px solid #334155",
-            borderRadius: "12px",
-            padding: "25px",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              width: "90px",
-              height: "90px",
-              borderRadius: "50%",
-              background: "#3b82f6",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              fontSize: "42px",
-              margin: "0 auto 20px",
-            }}
-          >
-            👤
-          </div>
+    <ProfileShell>
+      <div className="profile-grid">
+        <div className="profile-card profile-summary-card">
+          <div className="profile-avatar">👤</div>
 
           <h2>{profile.name}</h2>
+          <p className="profile-role-text">{profile.role}</p>
 
-          <p
-            style={{
-              color: "#94a3b8",
-              marginTop: "5px",
-            }}
-          >
-            {profile.role}
-          </p>
+          <hr className="profile-divider" />
 
-          <hr
-            style={{
-              borderColor: "#334155",
-              margin: "20px 0",
-            }}
-          />
-
-          <InfoRow title="Department" value={profile.department} />
-
-          <InfoRow title="Status" value={profile.status} />
-
-          <InfoRow title="Last Login" value={profile.lastLogin} />
+          <InfoRow title="Email" value={profile.email} />
+          <InfoRow title="Role" value={profile.role} />
         </div>
 
-        {/* Right Card */}
+        <div className="profile-card profile-details-card">
+          <ReadOnlyField label="Full Name" value={profile.name} />
+          <ReadOnlyField label="Email Address" value={profile.email} />
+          <ReadOnlyField label="Role" value={profile.role} />
 
-        <div
-          style={{
-            flex: 1,
-            minWidth: "350px",
-            background: "#1e293b",
-            border: "1px solid #334155",
-            borderRadius: "12px",
-            padding: "25px",
-          }}
-        >
-          <InputField
-            label="Full Name"
-            name="name"
-            value={profile.name}
-            onChange={handleChange}
-          />
-
-          <InputField
-            label="Email Address"
-            name="email"
-            value={profile.email}
-            onChange={handleChange}
-          />
-
-          <InputField
-            label="Phone Number"
-            name="phone"
-            value={profile.phone}
-            onChange={handleChange}
-          />
-
-          <div style={{ marginBottom: "20px" }}>
-            <label style={labelStyle}>Role</label>
-
-            <input
-              value={profile.role}
-              disabled
-              style={{
-                ...inputStyle,
-                background: "#111827",
-                color: "#94a3b8",
-                cursor: "not-allowed",
-              }}
-            />
-          </div>
-
-          <button
-            onClick={handleSave}
-            style={{
-              background: "#3b82f6",
-              color: "white",
-              border: "none",
-              padding: "12px 20px",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "bold",
-            }}
-          >
-            Save Profile
+          <button onClick={handleLogout} className="profile-button">
+            Logout
           </button>
         </div>
       </div>
+    </ProfileShell>
+  );
+}
+
+type ProfileShellProps = {
+  children: React.ReactNode;
+};
+
+function ProfileShell({ children }: ProfileShellProps) {
+  return (
+    <div className="profile-page">
+      <h1 className="profile-title">Profile</h1>
+      {children}
     </div>
   );
 }
 
-type InputProps = {
+type ReadOnlyFieldProps = {
   label: string;
-  name: string;
   value: string;
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => void;
 };
 
-function InputField({
-  label,
-  name,
-  value,
-  onChange,
-}: InputProps) {
+function ReadOnlyField({ label, value }: ReadOnlyFieldProps) {
   return (
-    <div style={{ marginBottom: "20px" }}>
-      <label style={labelStyle}>{label}</label>
-
-      <input
-        type="text"
-        name={name}
-        value={value}
-        onChange={onChange}
-        style={inputStyle}
-      />
+    <div className="profile-field">
+      <label className="profile-label">{label}</label>
+      <input value={value} readOnly className="profile-input" />
     </div>
   );
 }
@@ -196,44 +158,18 @@ type InfoProps = {
 
 function InfoRow({ title, value }: InfoProps) {
   return (
-    <div
-      style={{
-        marginBottom: "15px",
-      }}
-    >
-      <div
-        style={{
-          color: "#94a3b8",
-          fontSize: "13px",
-        }}
-      >
-        {title}
-      </div>
-
-      <div
-        style={{
-          marginTop: "4px",
-          fontWeight: "bold",
-        }}
-      >
-        {value}
-      </div>
+    <div className="profile-info-row">
+      <div className="profile-info-title">{title}</div>
+      <div className="profile-info-value">{value}</div>
     </div>
   );
 }
 
-const labelStyle = {
-  display: "block" as const,
-  marginBottom: "8px",
-  color: "#cbd5e1",
+type StatusMessageProps = {
+  children: React.ReactNode;
+  tone?: "info" | "error";
 };
 
-const inputStyle = {
-  width: "100%",
-  padding: "10px",
-  background: "#0f172a",
-  border: "1px solid #334155",
-  borderRadius: "8px",
-  color: "white",
-  fontSize: "15px",
-};
+function StatusMessage({ children, tone = "info" }: StatusMessageProps) {
+  return <div className={`profile-status profile-status-${tone}`}>{children}</div>;
+}
