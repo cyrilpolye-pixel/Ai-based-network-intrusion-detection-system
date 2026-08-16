@@ -1,41 +1,25 @@
 # AI-Based Network Intrusion Detection System (AI-NIDS)
 
-An AI-powered Network Intrusion Detection System (AI-NIDS) that monitors network traffic in real time, detects malicious activities using Artificial Intelligence, visualizes security events through an interactive dashboard, and assists administrators in responding to cyber threats.
+AI-NIDS is a full-stack academic project for monitoring network traffic, detecting suspicious activity with machine-learning models, and presenting security events through a React dashboard.
 
----
+## Project Goals
 
-## 📌 Project Overview
+- Monitor live and historical network traffic.
+- Detect suspicious or malicious activity with AI/ML models.
+- Visualize traffic, alerts, incidents, and reports in a web dashboard.
+- Help administrators review threats and decide response actions.
 
-The objective of this project is to develop a modern Network Intrusion Detection System capable of:
+## Features
 
-- Monitoring live network traffic
-- Detecting suspicious and malicious activities using AI models
-- Visualizing network statistics and intrusion alerts
-- Providing incident analysis and reporting
-- Assisting administrators with threat investigation
+- User authentication with login and signup screens.
+- Dashboard with high-level traffic and alert metrics.
+- Live monitoring and traffic-analysis pages.
+- Intrusion alert listing and incident detail pages.
+- Report, profile, and system-settings screens.
+- Backend API structure for authentication, dashboards, traffic, alerts, and AI integration.
+- Python ML service structure for training and prediction workflows.
 
-The system is designed as a web-based dashboard with a React frontend and a backend responsible for network monitoring, AI inference, and report generation.
-
----
-
-## 🚀 Features
-
-### Planned Features
-
-- User Authentication
-- Interactive Dashboard
-- Live Network Monitoring
-- Traffic Analysis
-- Intrusion Detection Alerts
-- Incident Details
-- Report Generation
-- User Profile & Settings
-- AI-assisted Threat Detection
-- Real-time Data Visualization
-
----
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 
@@ -44,45 +28,37 @@ The system is designed as a web-based dashboard with a React frontend and a back
 - Vite
 - React Router
 - CSS
-- Recharts *(planned)*
+- Recharts
 
 ### Backend
 
-- Node.js / Express *(or Python services for AI modules)*
-- REST API
+- Node.js
+- Express
+- MongoDB/Mongoose models
+- REST API routes
+- Socket support for realtime updates
 
-### AI & Networking
+### ML Service
 
-- Machine Learning / Deep Learning models
-- Packet Capture
-- Network Traffic Analysis
+- Python
+- CICIDS2017-style datasets
+- Machine-learning model training and prediction scripts
 
----
+## Project Structure
 
-## 📂 Project Structure
-
-```
-AI-Based-Network-Intrusion-Detection-System
-│
-├── frontend
-│   ├── src
-│   │   ├── assets
-│   │   ├── components
-│   │   ├── layouts
-│   │   ├── pages
-│   │   └── services
-│   └── ...
-│
-├── backend
-│
+```text
+Ai-based-network-intrusion-detection-system/
+├── backend/              # Express API, routes, controllers, models, sockets
+├── frontend/             # React + TypeScript + Vite application
+├── ml-service/           # Python ML training and prediction service
+├── package.json          # Root workspace scripts/dependencies
 └── README.md
 ```
 
----
-
-## 📄 Application Modules
+## Application Modules
 
 - Login
+- Signup
 - Dashboard
 - Live Monitoring
 - Traffic Analysis
@@ -92,24 +68,16 @@ AI-Based-Network-Intrusion-Detection-System
 - Settings
 - Profile
 
----
+## Installation
 
-## 👥 Team
-
-- **Cyril Poly**
-- **Adheena maria**
-- **Rinza**
----
-
-## ⚙️ Installation
-
-### Clone the repository
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/cyrilpolye-pixel/Ai-based-network-intrusion-detection-system.git
+cd Ai-based-network-intrusion-detection-system
 ```
 
-### Frontend
+### 2. Install frontend dependencies
 
 ```bash
 cd frontend
@@ -117,50 +85,58 @@ npm install
 npm run dev
 ```
 
-### Backend
+### 3. Install backend dependencies
 
-Backend setup will be added during development.
+```bash
+cd backend
+npm install
+npm run dev
+```
 
----
+Configure backend environment variables in a local `.env` file. Environment files are ignored by Git.
 
-## 📅 Development Status
+### 4. Set up the ML service
 
-🚧 Currently under active development.
+```bash
+cd ml-service
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-Completed:
-- Initial project setup
-- React + TypeScript + Vite
-- Project folder structure
-- Dashboard layout planning
+Place large datasets in `ml-service/data/` and trained models in `ml-service/models/`. These generated assets are ignored by Git while `.gitkeep` files preserve the directories.
 
-Upcoming:
-- Dashboard UI
-- Backend API
-- AI Integration
-- Real-time Monitoring
-- Report Generation
+## Dataset
 
----
-
-## 📜 License
-
-This project is developed for academic and educational purposes.
-
-datasheet
-CICIDS2017 
+The recommended dataset for experiments is CICIDS2017:
 
 Iman Sharafaldin, Arash Habibi Lashkari, and Ali A. Ghorbani, “Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization”, 4th International Conference on Information Systems Security and Privacy (ICISSP), Portugal, January 2018.
 
-usable algorithms
-| Algorithm               | Difficulty      | Good for CICIDS2017?         | Our project                  |
-| ----------------------- | --------------- | ---------------------------- | ---------------------------- |
-| **Random Forest**       | ⭐⭐ Easy         | ✅ Very good                  | **Excellent**                |
-| **Decision Tree**       | ⭐ Easy          | ✅ Good                       | Good baseline                |
-| **XGBoost**             | ⭐⭐⭐ Medium      | ✅ Very good                  | **Excellent**                |
-| **Logistic Regression** | ⭐ Easy          | ✅ Good baseline              | Useful comparison            |
-| **SVM**                 | ⭐⭐⭐ Medium/Hard | ✅ Yes                        | Less attractive for our size |
-| **KNN**                 | ⭐⭐ Medium       | ✅ Possible                   | Not a first choice          |
-| **Naive Bayes**         | ⭐⭐ Easy         | ✅ Possible                   | Baseline                     |
-| **Isolation Forest**    | ⭐⭐ Medium       | ✅ Good for anomaly detection | **Interesting**              |
-| **Neural Network/MLP**  | ⭐⭐⭐⭐ Harder     | ✅ Yes                        | Probably unnecessary         |
-| **Hybrid RF + XGBoost** | ⭐⭐⭐⭐            | ✅                            | **Very good project option** |
+## Candidate Algorithms
+
+| Algorithm | Difficulty | Good for CICIDS2017? | Project Fit |
+| --- | --- | --- | --- |
+| Random Forest | Easy | Very good | Excellent baseline |
+| Decision Tree | Easy | Good | Good baseline |
+| XGBoost | Medium | Very good | Excellent candidate |
+| Logistic Regression | Easy | Good baseline | Useful comparison |
+| SVM | Medium/Hard | Yes | Less attractive for larger datasets |
+| KNN | Medium | Possible | Not a first choice |
+| Naive Bayes | Easy | Possible | Baseline |
+| Isolation Forest | Medium | Good for anomaly detection | Interesting option |
+| Neural Network/MLP | Harder | Yes | Optional advanced model |
+| Hybrid RF + XGBoost | Harder | Yes | Strong project option |
+
+## Development Status
+
+The project is under active development. Current work includes improving frontend pages, refining API integrations, and organizing ML-service workflows.
+
+## Team
+
+- Cyril Poly
+- Adheena Maria
+- Rinza
+
+## License
+
+This project is developed for academic and educational purposes.
