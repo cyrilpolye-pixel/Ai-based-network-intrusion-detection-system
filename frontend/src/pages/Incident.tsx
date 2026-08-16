@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./Incident.css";
 
 type Incident = {
   attack: string;
@@ -26,84 +27,28 @@ export default function Incident() {
       "Block the source IP, monitor network traffic, and review firewall rules.",
   });
 
-  const severityColor = () => {
-    switch (incident.severity) {
-      case "Critical":
-        return "#ef4444";
-      case "High":
-        return "#f97316";
-      case "Medium":
-        return "#f59e0b";
-      default:
-        return "#22c55e";
-    }
-  };
-
-  const statusColor = () => {
-    switch (incident.status) {
-      case "Blocked":
-        return "#22c55e";
-      case "Investigating":
-        return "#f59e0b";
-      default:
-        return "#60a5fa";
-    }
-  };
-
   return (
-    <div style={{ color: "white" }}>
-      <h1 style={{ marginBottom: "25px" }}>Incident Details</h1>
+    <div className="incident-page">
+      <h1 className="incident-title">Incident Details</h1>
 
-      <div
-        style={{
-          background: "#1e293b",
-          border: "1px solid #334155",
-          borderRadius: "12px",
-          padding: "25px",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-          }}
-        >
+      <div className="incident-card">
+        <table className="incident-table">
           <tbody>
             <TableRow label="Attack Type" value={incident.attack} />
-
             <TableRow label="Source IP" value={incident.sourceIP} />
-
-            <TableRow
-              label="Destination IP"
-              value={incident.destinationIP}
-            />
-
+            <TableRow label="Destination IP" value={incident.destinationIP} />
             <TableRow label="Protocol" value={incident.protocol} />
 
             <tr>
-              <td style={labelStyle}>Severity</td>
-
-              <td
-                style={{
-                  ...valueStyle,
-                  color: severityColor(),
-                  fontWeight: "bold",
-                }}
-              >
+              <td className="incident-label">Severity</td>
+              <td className={`incident-value incident-severity-${incident.severity.toLowerCase()}`}>
                 {incident.severity}
               </td>
             </tr>
 
             <tr>
-              <td style={labelStyle}>Status</td>
-
-              <td
-                style={{
-                  ...valueStyle,
-                  color: statusColor(),
-                  fontWeight: "bold",
-                }}
-              >
+              <td className="incident-label">Status</td>
+              <td className={`incident-value incident-status-${incident.status.toLowerCase()}`}>
                 {incident.status}
               </td>
             </tr>
@@ -112,35 +57,19 @@ export default function Incident() {
               label="Packet Count"
               value={incident.packetCount.toLocaleString()}
             />
-
             <TableRow label="Detected At" value={incident.time} />
 
             <tr>
-              <td style={labelStyle}>Recommendation</td>
-
-              <td style={valueStyle}>{incident.recommendation}</td>
+              <td className="incident-label">Recommendation</td>
+              <td className="incident-value">{incident.recommendation}</td>
             </tr>
           </tbody>
         </table>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "15px",
-            marginTop: "30px",
-          }}
-        >
-          <button style={dangerButton}>
-            Block IP
-          </button>
-
-          <button style={warningButton}>
-            Investigate
-          </button>
-
-          <button style={primaryButton}>
-            Generate Report
-          </button>
+        <div className="incident-actions">
+          <button className="incident-button incident-button-danger">Block IP</button>
+          <button className="incident-button incident-button-warning">Investigate</button>
+          <button className="incident-button incident-button-primary">Generate Report</button>
         </div>
       </div>
     </div>
@@ -155,47 +84,8 @@ type RowProps = {
 function TableRow({ label, value }: RowProps) {
   return (
     <tr>
-      <td style={labelStyle}>{label}</td>
-      <td style={valueStyle}>{value}</td>
+      <td className="incident-label">{label}</td>
+      <td className="incident-value">{value}</td>
     </tr>
   );
 }
-
-const labelStyle = {
-  padding: "15px",
-  width: "220px",
-  color: "#94a3b8",
-  borderBottom: "1px solid #334155",
-};
-
-const valueStyle = {
-  padding: "15px",
-  borderBottom: "1px solid #334155",
-};
-
-const primaryButton = {
-  background: "#3b82f6",
-  color: "white",
-  border: "none",
-  padding: "10px 18px",
-  borderRadius: "8px",
-  cursor: "pointer",
-};
-
-const warningButton = {
-  background: "#f59e0b",
-  color: "white",
-  border: "none",
-  padding: "10px 18px",
-  borderRadius: "8px",
-  cursor: "pointer",
-};
-
-const dangerButton = {
-  background: "#ef4444",
-  color: "white",
-  border: "none",
-  padding: "10px 18px",
-  borderRadius: "8px",
-  cursor: "pointer",
-};
