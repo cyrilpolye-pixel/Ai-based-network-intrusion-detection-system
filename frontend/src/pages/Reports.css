@@ -198,6 +198,48 @@
   color: #4ade80;
 }
 
+.report-normal {
+  color: #4ade80 !important;
+  font-weight: 600;
+}
+
+.reports-protocol-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reports-protocol-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reports-protocol-label {
+  display: flex;
+  justify-content: space-between;
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.reports-protocol-label span:first-child {
+  color: white;
+  font-weight: 600;
+}
+
+.reports-protocol-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #0f172a;
+}
+
+.reports-protocol-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #3b82f6;
+}
+
 .reports-actions {
   display: flex;
   gap: 15px;
