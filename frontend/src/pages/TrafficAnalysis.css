@@ -204,3 +204,7 @@
     gap: 15px;
   }
 }
+
+.traffic-table-wide {
+  min-width: 1150px;
+}
