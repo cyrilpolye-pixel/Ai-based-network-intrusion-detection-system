@@ -1,0 +1,114 @@
+.profile-page {
+  color: white;
+}
+
+.profile-title {
+  margin-bottom: 25px;
+}
+
+.profile-grid {
+  display: flex;
+  gap: 25px;
+  flex-wrap: wrap;
+}
+
+.profile-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 25px;
+}
+
+.profile-summary-card {
+  width: 280px;
+  text-align: center;
+}
+
+.profile-details-card {
+  flex: 1;
+  min-width: 350px;
+}
+
+.profile-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #3b82f6;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 42px;
+  margin: 0 auto 20px;
+}
+
+.profile-role-text {
+  color: #94a3b8;
+  margin-top: 5px;
+}
+
+.profile-divider {
+  border-color: #334155;
+  margin: 20px 0;
+}
+
+.profile-field {
+  margin-bottom: 20px;
+}
+
+.profile-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #cbd5e1;
+}
+
+.profile-input {
+  width: 100%;
+  padding: 10px;
+  background: #111827;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 15px;
+  box-sizing: border-box;
+}
+
+.profile-info-row {
+  margin-bottom: 15px;
+}
+
+.profile-info-title {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.profile-info-value {
+  margin-top: 4px;
+  font-weight: bold;
+}
+
+.profile-status {
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.profile-status-info {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+}
+
+.profile-status-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+}
+
+.profile-button {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
