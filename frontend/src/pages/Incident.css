@@ -1,0 +1,93 @@
+.incident-page {
+  color: white;
+}
+
+.incident-title {
+  margin-bottom: 25px;
+}
+
+.incident-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 25px;
+}
+
+.incident-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.incident-label {
+  padding: 15px;
+  width: 220px;
+  color: #94a3b8;
+  border-bottom: 1px solid #334155;
+}
+
+.incident-value {
+  padding: 15px;
+  border-bottom: 1px solid #334155;
+}
+
+.incident-severity-critical,
+.incident-severity-high,
+.incident-severity-medium,
+.incident-severity-low,
+.incident-status-blocked,
+.incident-status-investigating,
+.incident-status-detected {
+  font-weight: bold;
+}
+
+.incident-severity-critical {
+  color: #ef4444;
+}
+
+.incident-severity-high {
+  color: #f97316;
+}
+
+.incident-severity-medium {
+  color: #f59e0b;
+}
+
+.incident-severity-low,
+.incident-status-blocked {
+  color: #22c55e;
+}
+
+.incident-status-investigating {
+  color: #f59e0b;
+}
+
+.incident-status-detected {
+  color: #60a5fa;
+}
+
+.incident-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+
+.incident-button {
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.incident-button-primary {
+  background: #3b82f6;
+}
+
+.incident-button-warning {
+  background: #f59e0b;
+}
+
+.incident-button-danger {
+  background: #ef4444;
+}

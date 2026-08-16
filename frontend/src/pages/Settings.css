@@ -1,0 +1,64 @@
+.settings-page {
+  color: white;
+}
+
+.settings-title {
+  margin-bottom: 25px;
+}
+
+.settings-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 25px;
+  max-width: 700px;
+}
+
+.settings-checkbox-row {
+  margin-bottom: 18px;
+}
+
+.settings-checkbox-label {
+  cursor: pointer;
+  color: #cbd5e1;
+}
+
+.settings-checkbox {
+  margin-right: 10px;
+}
+
+.settings-field {
+  margin-top: 20px;
+}
+
+.settings-field-large-gap {
+  margin-top: 25px;
+}
+
+.settings-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #cbd5e1;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 10px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: white;
+  font-size: 15px;
+}
+
+.settings-save-button {
+  margin-top: 30px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 12px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+}

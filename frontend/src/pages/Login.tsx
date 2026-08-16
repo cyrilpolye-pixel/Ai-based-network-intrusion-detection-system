@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import "./Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -41,9 +42,9 @@ export default function Login() {
       login(token, user);
 
       navigate("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       const message =
-        err.response?.data?.message ||
+        getErrorMessage(err) ||
         "Login failed. Please check your email and password.";
 
       setError(message);
@@ -53,177 +54,68 @@ export default function Login() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#0f172a",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "20px",
-      }}
-    >
-      <div
-        style={{
-          width: "420px",
-          maxWidth: "100%",
-          background: "#1e293b",
-          border: "1px solid #334155",
-          borderRadius: "15px",
-          padding: "40px",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
-        }}
-      >
-        {/* Logo */}
-        <div
-          style={{
-            width: "70px",
-            height: "70px",
-            borderRadius: "50%",
-            background: "#3b82f6",
-            color: "white",
-            fontSize: "30px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 20px",
-          }}
-        >
-          🛡️
-        </div>
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-logo">🛡️</div>
 
-        <h1
-          style={{
-            color: "white",
-            textAlign: "center",
-            marginBottom: "8px",
-          }}
-        >
-          AI Network IDS
-        </h1>
+        <h1 className="login-title">AI Network IDS</h1>
 
-        <p
-          style={{
-            color: "#94a3b8",
-            textAlign: "center",
-            marginBottom: "35px",
-          }}
-        >
+        <p className="login-subtitle">
           AI-Based Network Intrusion Detection System
         </p>
 
         <form onSubmit={handleLogin}>
-          {/* Email */}
-          <label style={labelStyle}>Email</label>
+          <label className="login-label">Email</label>
 
           <input
             type="email"
             placeholder="Enter email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={inputStyle}
+            className="login-input"
             disabled={loading}
           />
 
-          {/* Password */}
-          <label
-            style={{
-              ...labelStyle,
-              marginTop: "20px",
-            }}
-          >
-            Password
-          </label>
+          <label className="login-label login-label-spaced">Password</label>
 
           <input
             type="password"
             placeholder="Enter password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
+            className="login-input"
             disabled={loading}
           />
 
-          {/* Error */}
-          {error && (
-            <div
-              style={{
-                marginTop: "15px",
-                padding: "10px 12px",
-                background: "rgba(239, 68, 68, 0.12)",
-                border: "1px solid #ef4444",
-                borderRadius: "8px",
-                color: "#fca5a5",
-                fontSize: "14px",
-              }}
-            >
-              {error}
-            </div>
-          )}
+          {error && <div className="login-error">{error}</div>}
 
-          {/* Remember Me / Forgot Password */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: "20px",
-            }}
-          >
-            <label
-              style={{
-                color: "#94a3b8",
-                fontSize: "14px",
-              }}
-            >
+          <div className="login-options">
+            <label className="login-checkbox-label">
               <input
                 type="checkbox"
-                style={{ marginRight: "8px" }}
+                className="login-checkbox"
                 disabled={loading}
               />
               Remember Me
             </label>
 
-            <span
-              style={{
-                color: "#3b82f6",
-                fontSize: "14px",
-                cursor: "pointer",
-              }}
-            >
-              Forgot Password?
-            </span>
+            <span className="login-forgot">Forgot Password?</span>
           </div>
-<a href="/signup">Don't have an account? Sign up</a>
-          {/* Login */}
+
+          <Link to="/signup" className="login-signup-link">
+            Don&apos;t have an account? Sign up
+          </Link>
+
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: "100%",
-              marginTop: "30px",
-              padding: "14px",
-              background: loading ? "#64748b" : "#3b82f6",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "16px",
-              fontWeight: "bold",
-              cursor: loading ? "not-allowed" : "pointer",
-            }}
+            className="login-button"
           >
             {loading ? "LOGGING IN..." : "LOGIN"}
           </button>
         </form>
 
-        <p
-          style={{
-            color: "#64748b",
-            textAlign: "center",
-            marginTop: "30px",
-            fontSize: "13px",
-          }}
-        >
+        <p className="login-footer">
           AI-Based Network Intrusion Detection System
           <br />
           Version 1.0
@@ -233,21 +125,13 @@ export default function Login() {
   );
 }
 
-const labelStyle = {
-  color: "#cbd5e1",
-  display: "block",
-  marginBottom: "8px",
-};
+function getErrorMessage(err: unknown) {
+  if (typeof err !== "object" || err === null || !("response" in err)) {
+    return "";
+  }
 
-const inputStyle = {
-  width: "100%",
-  padding: "12px",
-  background: "#0f172a",
-  border: "1px solid #334155",
-  borderRadius: "8px",
-  color: "white",
-  outline: "none",
-  fontSize: "15px",
-  boxSizing: "border-box" as const,
-};
-
+  const response = (err as { response?: { data?: { message?: unknown } } }).response;
+  return typeof response?.data?.message === "string"
+    ? response.data.message
+    : "";
+}

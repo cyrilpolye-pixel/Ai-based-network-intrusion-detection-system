@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./Settings.css";
 
 export default function Settings() {
   const [settings, setSettings] = useState({
@@ -34,18 +35,10 @@ export default function Settings() {
   };
 
   return (
-    <div style={{ color: "white" }}>
-      <h1 style={{ marginBottom: "25px" }}>System Settings</h1>
+    <div className="settings-page">
+      <h1 className="settings-title">System Settings</h1>
 
-      <div
-        style={{
-          background: "#1e293b",
-          border: "1px solid #334155",
-          borderRadius: "12px",
-          padding: "25px",
-          maxWidth: "700px",
-        }}
-      >
+      <div className="settings-card">
         <Checkbox
           label="Enable Automatic IP Blocking"
           checked={settings.autoBlock}
@@ -70,8 +63,8 @@ export default function Settings() {
           onChange={() => handleCheckbox("packetCapture")}
         />
 
-        <div style={{ marginTop: "25px" }}>
-          <label style={labelStyle}>
+        <div className="settings-field settings-field-large-gap">
+          <label className="settings-label">
             AI Detection Threshold (%)
           </label>
 
@@ -82,12 +75,12 @@ export default function Settings() {
             min={50}
             max={100}
             onChange={handleNumberChange}
-            style={inputStyle}
+            className="settings-input"
           />
         </div>
 
-        <div style={{ marginTop: "20px" }}>
-          <label style={labelStyle}>
+        <div className="settings-field">
+          <label className="settings-label">
             Log Retention (Days)
           </label>
 
@@ -98,24 +91,11 @@ export default function Settings() {
             min={1}
             max={365}
             onChange={handleNumberChange}
-            style={inputStyle}
+            className="settings-input"
           />
         </div>
 
-        <button
-          onClick={handleSave}
-          style={{
-            marginTop: "30px",
-            background: "#3b82f6",
-            color: "white",
-            border: "none",
-            padding: "12px 22px",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontSize: "15px",
-            fontWeight: "bold",
-          }}
-        >
+        <button onClick={handleSave} className="settings-save-button">
           Save Settings
         </button>
       </div>
@@ -135,22 +115,13 @@ function Checkbox({
   onChange,
 }: CheckboxProps) {
   return (
-    <div
-      style={{
-        marginBottom: "18px",
-      }}
-    >
-      <label
-        style={{
-          cursor: "pointer",
-          color: "#cbd5e1",
-        }}
-      >
+    <div className="settings-checkbox-row">
+      <label className="settings-checkbox-label">
         <input
           type="checkbox"
           checked={checked}
           onChange={onChange}
-          style={{ marginRight: "10px" }}
+          className="settings-checkbox"
         />
 
         {label}
@@ -158,19 +129,3 @@ function Checkbox({
     </div>
   );
 }
-
-const labelStyle = {
-  display: "block" as const,
-  marginBottom: "8px",
-  color: "#cbd5e1",
-};
-
-const inputStyle = {
-  width: "100%",
-  padding: "10px",
-  background: "#0f172a",
-  border: "1px solid #334155",
-  borderRadius: "8px",
-  color: "white",
-  fontSize: "15px",
-};
