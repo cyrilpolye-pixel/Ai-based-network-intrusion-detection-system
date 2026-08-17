@@ -11,6 +11,12 @@ import Alerts from "./pages/Alerts";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import Incident from "./pages/Incident";
+
+
+
+
+
 
 import ProtectedRoute from "./components/common/ProtectedRoute";
 
@@ -31,6 +37,13 @@ function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="incident/:alertId" element={<Incident />} />
+
+
+
+
+
+          
         </Route>
       </Route>
 
