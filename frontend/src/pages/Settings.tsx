@@ -1,21 +1,45 @@
 import { useState } from "react";
 import "./Settings.css";
 
-export default function Settings() {
-  const [settings, setSettings] = useState({
-    autoBlock: true,
-    emailAlerts: true,
-    desktopAlerts: false,
-    packetCapture: true,
-    aiThreshold: 85,
-    logRetention: 30,
-  });
+type SettingsState = {
+  autoBlock: boolean;
+  emailAlerts: boolean;
+  desktopAlerts: boolean;
+  packetCapture: boolean;
+  aiThreshold: number;
+  logRetention: number;
+};
 
-  const handleCheckbox = (name: string) => {
+const DEFAULT_SETTINGS: SettingsState = {
+  autoBlock: true,
+  emailAlerts: true,
+  desktopAlerts: false,
+  packetCapture: true,
+  aiThreshold: 85,
+  logRetention: 30,
+};
+
+export default function Settings() {
+  const [settings, setSettings] =
+    useState<SettingsState>(DEFAULT_SETTINGS);
+
+  const [message, setMessage] = useState("");
+
+  const handleCheckbox = (
+    name: keyof Pick<
+      SettingsState,
+      "autoBlock" |
+        "emailAlerts" |
+        "desktopAlerts" |
+        "packetCapture"
+    >
+  ) => {
     setSettings((prev) => ({
       ...prev,
-      [name]: !prev[name as keyof typeof prev],
+      [name]: !prev[name],
     }));
+
+    setMessage("");
   };
 
   const handleNumberChange = (
@@ -27,16 +51,38 @@ export default function Settings() {
       ...prev,
       [name]: Number(value),
     }));
+
+    setMessage("");
   };
 
   const handleSave = () => {
-    console.log(settings);
-    alert("Settings saved successfully!");
+    /*
+     * These settings are currently frontend-only.
+     * Do not claim that they were persisted to MongoDB
+     * until a real backend settings API exists.
+     */
+    console.log("Current settings:", settings);
+
+    setMessage(
+      "Settings updated for this session. Backend persistence is not currently configured."
+    );
+  };
+
+  const handleReset = () => {
+    setSettings(DEFAULT_SETTINGS);
+    setMessage("Settings reset to default values.");
   };
 
   return (
     <div className="settings-page">
-      <h1 className="settings-title">System Settings</h1>
+      <div className="settings-header">
+        <div>
+          <h1 className="settings-title">System Settings</h1>
+          <p className="settings-description">
+            Configure detection and notification preferences.
+          </p>
+        </div>
+      </div>
 
       <div className="settings-card">
         <Checkbox
@@ -64,11 +110,12 @@ export default function Settings() {
         />
 
         <div className="settings-field settings-field-large-gap">
-          <label className="settings-label">
+          <label className="settings-label" htmlFor="aiThreshold">
             AI Detection Threshold (%)
           </label>
 
           <input
+            id="aiThreshold"
             type="number"
             name="aiThreshold"
             value={settings.aiThreshold}
@@ -77,14 +124,19 @@ export default function Settings() {
             onChange={handleNumberChange}
             className="settings-input"
           />
+
+          <small className="settings-help">
+            Currently applies only to the frontend setting value.
+          </small>
         </div>
 
         <div className="settings-field">
-          <label className="settings-label">
+          <label className="settings-label" htmlFor="logRetention">
             Log Retention (Days)
           </label>
 
           <input
+            id="logRetention"
             type="number"
             name="logRetention"
             value={settings.logRetention}
@@ -93,11 +145,35 @@ export default function Settings() {
             onChange={handleNumberChange}
             className="settings-input"
           />
+
+          <small className="settings-help">
+            Database retention is not currently configured through this page.
+          </small>
         </div>
 
-        <button onClick={handleSave} className="settings-save-button">
-          Save Settings
-        </button>
+        {message && (
+          <div className="settings-message">
+            {message}
+          </div>
+        )}
+
+        <div className="settings-actions">
+          <button
+            type="button"
+            onClick={handleSave}
+            className="settings-save-button"
+          >
+            Save Settings
+          </button>
+
+          <button
+            type="button"
+            onClick={handleReset}
+            className="settings-reset-button"
+          >
+            Reset
+          </button>
+        </div>
       </div>
     </div>
   );

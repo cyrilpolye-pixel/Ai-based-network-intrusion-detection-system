@@ -2,11 +2,11 @@ backend steps:
 
 Authentication (JWT) done
 CRUD APIs     done
-Connect frontend to APIs
-Train the ML model
-Integrate Python ↔ Node.js
-Live monitoring & alerts
-Reports and analytics
+Connect frontend to APIs done
+Train the ML model  done
+Integrate Python ↔ Node.js done
+Live monitoring & alerts done
+Reports and analytics done
 Final testing and deployment
 
 
@@ -31,7 +31,12 @@ Traffic Analysis — current page; verify it against the real traffic records.
 Reports — replace the current dummy/static report data with useful project data.
 Profile — verify/fix user data and authentication connection.
 Settings — verify the page and decide which settings actually need backend support.
+
+
+
 Incident Details — connect it to the actual alert/traffic record.
+
+
 Authentication — test login/register/logout and protected routes.
 Full integration test:
 Frontend → Backend

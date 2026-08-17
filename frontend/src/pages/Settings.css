@@ -1,9 +1,20 @@
 .settings-page {
+  width: 100%;
   color: white;
 }
 
-.settings-title {
+.settings-header {
   margin-bottom: 25px;
+}
+
+.settings-title {
+  margin: 0;
+  font-size: 28px;
+}
+
+.settings-description {
+  margin: 6px 0 0;
+  color: #94a3b8;
 }
 
 .settings-card {
@@ -21,10 +32,15 @@
 .settings-checkbox-label {
   cursor: pointer;
   color: #cbd5e1;
+  display: flex;
+  align-items: center;
 }
 
 .settings-checkbox {
   margin-right: 10px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .settings-field {
@@ -39,10 +55,12 @@
   display: block;
   margin-bottom: 8px;
   color: #cbd5e1;
+  font-weight: 500;
 }
 
 .settings-input {
   width: 100%;
+  box-sizing: border-box;
   padding: 10px;
   background: #0f172a;
   border: 1px solid #334155;
@@ -51,14 +69,73 @@
   font-size: 15px;
 }
 
-.settings-save-button {
+.settings-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.settings-help {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.settings-message {
+  margin-top: 22px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+  font-size: 13px;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 12px;
   margin-top: 30px;
-  background: #3b82f6;
-  color: white;
+}
+
+.settings-save-button,
+.settings-reset-button {
   border: none;
   padding: 12px 22px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 15px;
-  font-weight: bold;
+  font-weight: 600;
+}
+
+.settings-save-button {
+  background: #3b82f6;
+  color: white;
+}
+
+.settings-save-button:hover {
+  opacity: 0.9;
+}
+
+.settings-reset-button {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+.settings-reset-button:hover {
+  background: #475569;
+}
+
+@media (max-width: 600px) {
+  .settings-card {
+    padding: 20px;
+  }
+
+  .settings-actions {
+    flex-direction: column;
+  }
+
+  .settings-save-button,
+  .settings-reset-button {
+    width: 100%;
+  }
 }

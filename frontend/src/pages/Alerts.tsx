@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import socket from "../services/socket";
 import "./Alerts.css";
 
 type Alert = {
   _id: string;
-  trafficLogId?: string | object;
+  trafficLogId?: string | { _id?: string };
   attackType: string;
   severity: "Low" | "Medium" | "High" | "Critical";
   status: "Unread" | "Read" | "Resolved";
@@ -14,6 +15,8 @@ type Alert = {
 };
 
 export default function Alerts() {
+  const navigate = useNavigate();
+
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -90,13 +93,10 @@ export default function Alerts() {
     switch (severity) {
       case "Critical":
         return "severity-critical";
-
       case "High":
         return "severity-high";
-
       case "Medium":
         return "severity-medium";
-
       default:
         return "severity-low";
     }
@@ -106,10 +106,8 @@ export default function Alerts() {
     switch (status) {
       case "Resolved":
         return "status-resolved";
-
       case "Read":
         return "status-read";
-
       default:
         return "status-unread";
     }
@@ -168,9 +166,7 @@ export default function Alerts() {
                   <tr key={alert._id}>
                     <td>
                       {alert.time
-                        ? new Date(
-                            alert.time
-                          ).toLocaleString()
+                        ? new Date(alert.time).toLocaleString()
                         : alert.createdAt
                         ? new Date(
                             alert.createdAt
@@ -203,6 +199,15 @@ export default function Alerts() {
                     </td>
 
                     <td>
+                      <button
+                        className="alert-action-button"
+                        onClick={() =>
+                          navigate(`/incident/${alert._id}`)
+                        }
+                      >
+                        View Details
+                      </button>
+
                       {alert.status === "Unread" && (
                         <button
                           className="alert-action-button"
