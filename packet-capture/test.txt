@@ -1,0 +1,2 @@
+AI-NIDS packet capture test
+Normal traffic from my phone.
