@@ -86,3 +86,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# =========================
+# ignore files
+# =========================
+packet-capture/flow_output.txt

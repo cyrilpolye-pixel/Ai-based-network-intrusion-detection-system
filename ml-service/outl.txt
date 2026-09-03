@@ -1,0 +1,241 @@
+compare_features.py
+================================================================================
+CICIDS2017 FEATURE CHECK
+================================================================================
+Rows   : 225745
+Columns: 79
+
+The 78 ML columns used by the pretrained model:
+
+01. Destination Port
+02. Flow Duration
+03. Total Fwd Packets
+04. Total Backward Packets
+05. Total Length of Fwd Packets
+06. Total Length of Bwd Packets
+07. Fwd Packet Length Max
+08. Fwd Packet Length Min
+09. Fwd Packet Length Mean
+10. Fwd Packet Length Std
+11. Bwd Packet Length Max
+12. Bwd Packet Length Min
+13. Bwd Packet Length Mean
+14. Bwd Packet Length Std
+15. Flow Bytes/s
+16. Flow Packets/s
+17. Flow IAT Mean
+18. Flow IAT Std
+19. Flow IAT Max
+20. Flow IAT Min
+21. Fwd IAT Total
+22. Fwd IAT Mean
+23. Fwd IAT Std
+24. Fwd IAT Max
+25. Fwd IAT Min
+26. Bwd IAT Total
+27. Bwd IAT Mean
+28. Bwd IAT Std
+29. Bwd IAT Max
+30. Bwd IAT Min
+31. Fwd PSH Flags
+32. Bwd PSH Flags
+33. Fwd URG Flags
+34. Bwd URG Flags
+35. Fwd Header Length
+36. Bwd Header Length
+37. Fwd Packets/s
+38. Bwd Packets/s
+39. Min Packet Length
+40. Max Packet Length
+41. Packet Length Mean
+42. Packet Length Std
+43. Packet Length Variance
+44. FIN Flag Count
+45. SYN Flag Count
+46. RST Flag Count
+47. PSH Flag Count
+48. ACK Flag Count
+49. URG Flag Count
+50. CWE Flag Count
+51. ECE Flag Count
+52. Down/Up Ratio
+53. Average Packet Size
+54. Avg Fwd Segment Size
+55. Avg Bwd Segment Size
+56. Fwd Header Length.1
+57. Fwd Avg Bytes/Bulk
+58. Fwd Avg Packets/Bulk
+59. Fwd Avg Bulk Rate
+60. Bwd Avg Bytes/Bulk
+61. Bwd Avg Packets/Bulk
+62. Bwd Avg Bulk Rate
+63. Subflow Fwd Packets
+64. Subflow Fwd Bytes
+65. Subflow Bwd Packets
+66. Subflow Bwd Bytes
+67. Init_Win_bytes_forward
+68. Init_Win_bytes_backward
+69. act_data_pkt_fwd
+70. min_seg_size_forward
+71. Active Mean
+72. Active Std
+73. Active Max
+74. Active Min
+75. Idle Mean
+76. Idle Std
+77. Idle Max
+78. Idle Min
+
+================================================================================
+CHECKING LAST 8 FEATURES
+================================================================================
+
+Active Mean
+0.0
+0.0
+0.0
+
+Active Std
+0.0
+0.0
+0.0
+
+Active Max
+0
+0
+0
+
+Active Min
+0
+0
+0
+
+Idle Mean
+0.0
+0.0
+0.0
+
+Idle Std
+0.0
+0.0
+0.0
+
+Idle Max
+0
+0
+0
+
+Idle Min
+0
+0
+0
+
+================================================================================
+CHECK COMPLETE
+==============================
+
+
+
+python -c "import pandas as pd; df=pd.read_csv('data/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv'); df.columns=df.columns.str.strip(); cols=['Fwd Header Length','Bwd Header Length','Init_Win_bytes_forward','Init_Win_bytes_backward','min_seg_size_forward','Active Mean','Active Std','Active Max','Active Min','Idle Mean','Idle Std','Idle Max','Idle Min']; print(df[cols].describe().T[['min','max','mean']].to_string())"
+                         min          max          mean
+Fwd Header Length        0.0      39396.0  1.115227e+02
+Bwd Header Length        0.0      58852.0  1.067890e+02
+Init_Win_bytes_forward  -1.0      65535.0  4.247437e+03
+Init_Win_bytes_backward -1.0      65535.0  6.010486e+02
+min_seg_size_forward     0.0         52.0  2.148275e+01
+Active Mean              0.0  100000000.0  1.848261e+05
+Active Std               0.0   39500000.0  1.293436e+04
+Active Max               0.0  100000000.0  2.080849e+05
+Active Min               0.0  100000000.0  1.776201e+05
+Idle Mean                0.0  120000000.0  1.032214e+07
+Idle Std                 0.0   65300000.0  3.611943e+06
+Idle Max                 0.0  120000000.0  1.287813e+07
+Idle Min                 0.0  120000000.0  7.755355e+06
+
+
+
+ notepad outl.txt
+(.venv) PS C:\Users\anna\Projects\ainids\ml-service> python -c "import joblib; s=joblib.load('models/scaler.pkl'); print('Scaler shape:',s.scale_.shape); print('Feature scales:'); [print(f'{i+1:02d}: {x}') for i,x in enumerate(s.scale_)]"
+Scaler shape: (78,)
+Feature scales:
+01: 18274.31645481422
+02: 33667498.70639464
+03: 750.0525457289918
+04: 997.8935067232619
+05: 9998.637090312683
+06: 2264234.501710983
+07: 717.5181313460694
+08: 60.3553183208445
+09: 186.17331281131027
+10: 281.3211471791208
+11: 1947.1565129424664
+12: 68.88116627070167
+13: 605.4854120427821
+14: 840.0506982231043
+15: 25940151.08340393
+16: 254415.39291327365
+17: 4510038.267264771
+18: 8049408.702691253
+19: 24470182.34338476
+20: 2951771.8934962098
+21: 33589652.9786869
+22: 9530185.579967767
+23: 9643377.071458725
+24: 24539893.310458545
+25: 8595727.221038006
+26: 28749444.842500027
+27: 8891513.351011183
+28: 6281470.941079693
+29: 17168995.394806653
+30: 8313135.417109826
+31: 0.2103410751806462
+32: 1.0
+33: 0.010553606722017717
+34: 1.0
+35: 21063523.49611291
+36: 1452944.64485857
+37: 247654.1779383903
+38: 38170.37530824262
+39: 25.2461430669255
+40: 2029.0333720770284
+41: 305.59846868073055
+42: 632.050864008761
+43: 1648251.7307787226
+44: 0.18449335498775807
+45: 0.2103410751806462
+46: 0.01557324778822387
+47: 0.4575046329522525
+48: 0.464641105163521
+49: 0.29297925982891265
+50: 0.010553606722017717
+51: 0.01560725465068274
+52: 0.680582314001673
+53: 331.9733877614584
+54: 186.17331281131027
+55: 605.4854120428014
+56: 21063523.49611291
+57: 1.0
+58: 1.0
+59: 1.0
+60: 1.0
+61: 1.0
+62: 1.0
+63: 750.0525457289918
+64: 9985.111236208428
+65: 997.8935067232619
+66: 2264203.7179076243
+67: 14340.218083326447
+68: 8454.535706107228
+69: 636.7480631325385
+70: 1085539.0493325293
+71: 648923.3250673278
+72: 393578.62580926134
+73: 1026333.0693266185
+74: 577381.6573518253
+75: 23640565.51107784
+76: 4605288.438562902
+77: 24377658.96631713
+78: 23373893.406768024
+
+
+
