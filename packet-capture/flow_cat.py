@@ -1,6 +1,5 @@
 # ============================================================
 # AI-NIDS LIVE NETWORK CAPTURE
-# PART 1 OF 2
 # ============================================================
 
 import threading
@@ -13,67 +12,15 @@ from scapy.all import sniff, IP, TCP, UDP
 
 from feat import FEATURE_NAMES, calculate_features
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
-
-# IP address of this computer
-PC_IP = "192.168.43.31"
-
-
-# ------------------------------------------------------------
-# MONITORING MODE
-# ------------------------------------------------------------
-#
-# We are currently testing controlled PortScan traffic.
-#
-# The old configuration was:
-#
-#     MONITORED_PORTS = {8000}
-#
-# That would only capture traffic involving port 8000.
-#
-# For PortScan testing, we need to capture multiple TCP
-# destination ports.
-#
-# Therefore we monitor TCP traffic involving the PC and
-# allow the packet filter below to decide what is useful.
-#
-# ------------------------------------------------------------
-
-PORTSCAN_TEST_MODE = True
-
-
-# Ports belonging to services that should NOT become
-# monitored application flows.
-IGNORED_PORTS = {
-    5001,       # ML service
-}
-
-
-# Optional: keep this set empty during PortScan testing.
-#
-# If later you want to monitor only specific application
-# ports, you can put them here.
-#
-# Example:
-#
-# MONITORED_PORTS = {3000, 5000}
-#
-MONITORED_PORTS = set()
-
-
-# ML service
-ML_API_URL = "http://127.0.0.1:5001/predict"
-
-
-# Flow timeout
-FLOW_TIMEOUT = 3.0
-
-
-# Output file
-OUTPUT_FILE = "flow_output.txt"
+from capture_config import (
+    PC_IP,
+    PORTSCAN_TEST_MODE,
+    IGNORED_PORTS,
+    MONITORED_PORTS,
+    ML_API_URL,
+    FLOW_TIMEOUT,
+    OUTPUT_FILE,
+)
 
 
 # ============================================================
@@ -161,11 +108,13 @@ def write_output(text):
 
 def packet_is_useful(packet):
 
-    # We only process IPv4 packets.
+    # --------------------------------------------------------
+    # Only IPv4 packets
+    # --------------------------------------------------------
+
     if not packet.haslayer(IP):
 
         return False
-
 
     ip = packet[IP]
 
@@ -211,7 +160,7 @@ def packet_is_useful(packet):
 
 
     # --------------------------------------------------------
-    # Ignore internal service ports
+    # Ignore unwanted service ports
     # --------------------------------------------------------
 
     if (
@@ -229,10 +178,8 @@ def packet_is_useful(packet):
 
     if PORTSCAN_TEST_MODE:
 
-        # For the controlled PortScan test we need to see
-        # traffic involving many destination ports.
-        #
-        # We therefore do NOT restrict traffic to port 8000.
+        # During the controlled PortScan test,
+        # allow traffic involving many different ports.
 
         return True
 
@@ -254,7 +201,7 @@ def packet_is_useful(packet):
 
 
 # ============================================================
-# FLOW KEY
+# FLOW INFORMATION
 # ============================================================
 
 def get_flow_information(packet):
@@ -409,7 +356,7 @@ def process_flow(flow):
 
 
     # --------------------------------------------------------
-    # Verify that exactly 78 features were generated
+    # Verify exactly 78 features
     # --------------------------------------------------------
 
     if len(features) != 78:
@@ -434,9 +381,24 @@ def process_flow(flow):
 
 
     # --------------------------------------------------------
-    # Send to ML service
+    # Send features to ML service
+    # --------------------------------------------------------
+    # --------------------------------------------------------
+    # TEMPORARY LIVE FEATURE CHECK
     # --------------------------------------------------------
 
+    print("\nLIVE FLOW FEATURE CHECK")
+    print("-" * 70)
+
+    for i, (name, value) in enumerate(
+        zip(FEATURE_NAMES, features),
+        start=1
+    ):
+        print(
+            f"{i:02d}. {name:<35} = {value}"
+        )
+
+    print("-" * 70)
     prediction = send_to_ml(features)
 
 
@@ -475,7 +437,7 @@ def process_flow(flow):
 
 
     # --------------------------------------------------------
-    # TEXT FILE
+    # TEXT FILE OUTPUT
     # --------------------------------------------------------
 
     output = []
@@ -568,10 +530,6 @@ def process_flow(flow):
     write_output(
         "".join(output)
     )
-# ============================================================
-# AI-NIDS LIVE NETWORK CAPTURE
-# PART 2 OF 2
-# ============================================================
 
 
 # ============================================================
@@ -620,7 +578,7 @@ def flow_expiration_worker():
 def handle_packet(packet):
 
     # --------------------------------------------------------
-    # Ignore packets that aren't relevant
+    # Ignore irrelevant packets
     # --------------------------------------------------------
 
     if not packet_is_useful(packet):
@@ -629,7 +587,7 @@ def handle_packet(packet):
 
 
     # --------------------------------------------------------
-    # Extract flow information
+    # Get flow information
     # --------------------------------------------------------
 
     info = get_flow_information(packet)
@@ -796,10 +754,10 @@ def main():
 
         sniff(
 
-            # Only capture IPv4 traffic.
+            # Capture IPv4 traffic.
             #
-            # packet_is_useful() performs the more detailed
-            # filtering afterward.
+            # packet_is_useful() performs
+            # detailed filtering.
 
             filter="ip",
 
@@ -826,7 +784,7 @@ def main():
 
 
         # ----------------------------------------------------
-        # Process flows still in memory
+        # Process remaining flows
         # ----------------------------------------------------
 
         remaining = []
