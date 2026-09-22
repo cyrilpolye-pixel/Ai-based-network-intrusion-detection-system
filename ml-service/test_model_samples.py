@@ -3,7 +3,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import joblib
-import requests
 
 
 # ============================================================
@@ -12,12 +11,9 @@ import requests
 
 DATA_DIR = "data"
 
-BINARY_MODEL_PATH = "models/cnn1d_binary.pth"
 ATTACK_MODEL_PATH = "models/cnn1d_attacks_only.pth"
 SCALER_PATH = "models/scaler.pkl"
 ENCODER_PATH = "models/label_encoder_attacks.pkl"
-
-ML_API_URL = "http://127.0.0.1:5001/predict"
 
 
 # ============================================================
@@ -80,7 +76,9 @@ class CNN1D_Attack(nn.Module):
         )
 
     def forward(self, x):
-        return self.classifier(self.features(x.unsqueeze(1)))
+        return self.classifier(
+            self.features(x.unsqueeze(1))
+        )
 
 
 # ============================================================
@@ -192,7 +190,7 @@ DATASETS = {
 
 
 # ============================================================
-# LOAD ATTACK MODEL
+# LOAD MODELS
 # ============================================================
 
 print("=" * 70)
@@ -201,16 +199,13 @@ print("=" * 70)
 
 print()
 print("Loading scaler...")
-
 scaler = joblib.load(SCALER_PATH)
 
 print("Loading label encoder...")
-
 encoder = joblib.load(ENCODER_PATH)
 
 print("Attack classes:")
 print(list(encoder.classes_))
-
 
 print()
 print("Loading attack model...")
@@ -245,30 +240,57 @@ def test_dataset(name, filename, rows=20):
     print(f"FILE: {filename}")
     print("=" * 70)
 
-    # Read only first 20 rows
-    df = pd.read_csv(
-        path,
-        nrows=rows
-    )
+    # Read dataset
+    df = pd.read_csv(path)
 
     df.columns = df.columns.str.strip()
 
-    # Clean labels
-    label_column = "Label"
+    if "Label" not in df.columns:
+        raise ValueError("Label column not found")
 
-    if label_column in df.columns:
-        actual_labels = (
-            df[label_column]
-            .astype(str)
-            .str.strip()
-        )
+    # Clean labels
+    df["Label"] = (
+        df["Label"]
+        .astype(str)
+        .str.strip()
+    )
+
+    # Select the requested class
+    if name == "BENIGN":
+
+        selected = df[
+            df["Label"].str.upper() == "BENIGN"
+        ]
+
     else:
-        actual_labels = pd.Series(
-            ["UNKNOWN"] * len(df)
+
+        selected = df[
+            df["Label"].str.contains(
+                name,
+                case=False,
+                na=False
+            )
+        ]
+
+    # Take requested number of samples
+    selected = selected.head(rows).copy()
+
+    if len(selected) == 0:
+        raise ValueError(
+            f"No samples found for label: {name}"
         )
+
+    print()
+    print(
+        f"Selected {len(selected)} rows "
+        f"with requested label: {name}"
+    )
+
+    # Actual labels
+    actual_labels = selected["Label"].reset_index(drop=True)
 
     # Select 78 features
-    X = df[FEATURE_NAMES].apply(
+    X = selected[FEATURE_NAMES].apply(
         pd.to_numeric,
         errors="coerce"
     )
@@ -278,8 +300,12 @@ def test_dataset(name, filename, rows=20):
         np.nan
     ).fillna(0)
 
-    # Scale
-    X_scaled = scaler.transform(X)
+    # Convert to numpy before scaling.
+    # This avoids the feature-name warning because
+    # the scaler was fitted without feature names.
+    X_scaled = scaler.transform(
+        X.to_numpy()
+    )
 
     # Tensor
     tensor = torch.tensor(
@@ -307,7 +333,9 @@ def test_dataset(name, filename, rows=20):
     )
 
     # Display
-    for i in range(len(df)):
+    correct = 0
+
+    for i in range(len(selected)):
 
         confidence = probabilities[
             i,
@@ -318,6 +346,18 @@ def test_dataset(name, filename, rows=20):
 
         predicted = predicted_labels[i]
 
+        # For BENIGN, the attack-only model cannot
+        # predict BENIGN. Therefore BENIGN is not
+        # evaluated by this attack-only classifier.
+        if name != "BENIGN":
+
+            actual_matches = (
+                actual.lower() == predicted.lower()
+            )
+
+            if actual_matches:
+                correct += 1
+
         print(
             f"Row {i + 1:02d} | "
             f"Actual={actual} | "
@@ -325,19 +365,23 @@ def test_dataset(name, filename, rows=20):
             f"Confidence={confidence:.4f}"
         )
 
-    # Accuracy against requested class
-    correct = sum(
-        predicted_labels[i] == name
-        for i in range(len(df))
-    )
-
     print()
+
+    if name == "BENIGN":
+
+        print(
+            "BENIGN samples selected successfully. "
+            "Attack-only model is not used to classify BENIGN."
+        )
+
+        return None, len(selected)
+
     print(
         f"{name} identified correctly: "
-        f"{correct}/{len(df)}"
+        f"{correct}/{len(selected)}"
     )
 
-    return correct, len(df)
+    return correct, len(selected)
 
 
 # ============================================================
@@ -383,7 +427,19 @@ print("=" * 70)
 
 for name, (correct, total) in results.items():
 
-    if total > 0:
+    if total == 0:
+
+        print(
+            f"{name:15s}: TEST FAILED"
+        )
+
+    elif correct is None:
+
+        print(
+            f"{name:15s}: 20 BENIGN samples selected"
+        )
+
+    else:
 
         accuracy = (
             correct / total
@@ -393,12 +449,6 @@ for name, (correct, total) in results.items():
             f"{name:15s}: "
             f"{correct:2d}/{total:2d} "
             f"({accuracy:.1f}%)"
-        )
-
-    else:
-
-        print(
-            f"{name:15s}: TEST FAILED"
         )
 
 print("=" * 70)

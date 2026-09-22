@@ -91,5 +91,5 @@ Thumbs.db
 # ignore files
 # =========================
 packet-capture/flow_output.txt
-project.txt
 packet-capture/todo.txt
+temp.txt
