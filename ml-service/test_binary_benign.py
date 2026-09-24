@@ -241,7 +241,7 @@ df[label_column] = df[label_column].astype(str).str.strip()
 # ------------------------------------------------------------
 
 benign = df[
-    df["Label"].str.upper() == "BENIGN"
+    df[label_column].str.upper() == "BENIGN"
 ].head(20).copy()
 
 print("Actual BENIGN samples selected:", len(benign))
@@ -252,8 +252,69 @@ if len(benign) == 0:
 
 
 # ------------------------------------------------------------
-# Select features
+# Normalize CSV column names
 # ------------------------------------------------------------
+
+benign.columns = benign.columns.str.strip()
+
+# CICIDS2017 abbreviated column names -> model feature names
+COLUMN_RENAME = {
+    "Total Length of Bwd Packets": "Total Length of Bwd Packets",
+    "Bwd Pkt Len Max": "Bwd Packet Length Max",
+    "Bwd Pkt Len Min": "Bwd Packet Length Min",
+    "Bwd Pkt Len Mean": "Bwd Packet Length Mean",
+    "Bwd Pkt Len Std": "Bwd Packet Length Std",
+    "Flow Byts/s": "Flow Bytes/s",
+    "Flow Pkts/s": "Flow Packets/s",
+    "Fwd Pkt Len Max": "Fwd Packet Length Max",
+    "Fwd Pkt Len Min": "Fwd Packet Length Min",
+    "Fwd Pkt Len Mean": "Fwd Packet Length Mean",
+    "Fwd Pkt Len Std": "Fwd Packet Length Std",
+    "Fwd Header Len": "Fwd Header Length",
+    "Bwd Header Len": "Bwd Header Length",
+    "Fwd Pkts/s": "Fwd Packets/s",
+    "Bwd Pkts/s": "Bwd Packets/s",
+    "Pkt Len Min": "Min Packet Length",
+    "Pkt Len Max": "Max Packet Length",
+    "Pkt Len Mean": "Packet Length Mean",
+    "Pkt Len Std": "Packet Length Std",
+    "Pkt Len Var": "Packet Length Variance",
+    "SYN Flag Cnt": "SYN Flag Count",
+    "RST Flag Cnt": "RST Flag Count",
+    "PSH Flag Cnt": "PSH Flag Count",
+    "ACK Flag Cnt": "ACK Flag Count",
+    "URG Flag Cnt": "URG Flag Count",
+    "CWE Flag Count": "CWE Flag Count",
+    "ECE Flag Cnt": "ECE Flag Count",
+    "Down/Up Ratio": "Down/Up Ratio",
+    "Avg Fwd Segment Size": "Avg Fwd Segment Size",
+    "Avg Bwd Segment Size": "Avg Bwd Segment Size",
+    "Fwd Header Length.1": "Fwd Header Length.1",
+    "Fwd Avg Bytes/Bulk": "Fwd Avg Bytes/Bulk",
+    "Fwd Avg Packets/Bulk": "Fwd Avg Packets/Bulk",
+    "Fwd Avg Bulk Rate": "Fwd Avg Bulk Rate",
+    "Bwd Avg Bytes/Bulk": "Bwd Avg Bytes/Bulk",
+    "Bwd Avg Packets/Bulk": "Bwd Avg Packets/Bulk",
+    "Bwd Avg Bulk Rate": "Bwd Avg Bulk Rate",
+    "Subflow Fwd Packets": "Subflow Fwd Packets",
+    "Subflow Fwd Bytes": "Subflow Fwd Bytes",
+    "Subflow Bwd Packets": "Subflow Bwd Packets",
+    "Subflow Bwd Bytes": "Subflow Bwd Bytes",
+    "Init_Win_bytes_forward": "Init_Win_bytes_forward",
+    "Init_Win_bytes_backward": "Init_Win_bytes_backward",
+    "act_data_pkt_fwd": "act_data_pkt_fwd",
+    "min_seg_size_forward": "min_seg_size_forward",
+    "Active Mean": "Active Mean",
+    "Active Std": "Active Std",
+    "Active Max": "Active Max",
+    "Active Min": "Active Min",
+    "Idle Mean": "Idle Mean",
+    "Idle Std": "Idle Std",
+    "Idle Max": "Idle Max",
+    "Idle Min": "Idle Min",
+}
+
+benign = benign.rename(columns=COLUMN_RENAME)
 
 X = benign[FEATURE_NAMES].copy()
 

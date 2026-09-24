@@ -2,7 +2,9 @@ import socket
 import time
 
 # YOUR PC on the phone hotspot
-TARGET_IP = "192.168.43.31"
+#TARGET_IP = "192.168.43.31"
+TARGET_IP = "172.16.12.190"
+
 
 # Controlled test range
 START_PORT = 1
