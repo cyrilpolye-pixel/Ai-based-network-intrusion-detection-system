@@ -2,7 +2,20 @@ python -m venv .venv
 
 .\.venv\Scripts\Activate.ps1
 
+.\venv\Scripts\Activate.ps1
 
+.\venv\Scripts\activate.bat
+
+.venv\Scripts\activate
+
+
+ python flow_cat.py
+
+
+
+source venv/bin/activate
+
+ deactivate
 
 cd C:\Users\\Desktop\packet-capture-test
 
@@ -89,6 +102,8 @@ cd backend
 
 cd ml-service
 
+
+cd packet-capture
 
 
 npm run dev
