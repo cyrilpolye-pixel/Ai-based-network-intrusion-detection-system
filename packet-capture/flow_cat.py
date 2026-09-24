@@ -5,10 +5,18 @@
 import threading
 import time
 from datetime import datetime
+import signal
 
 import requests
 
-from scapy.all import sniff, IP, TCP, UDP
+from scapy.all import (
+    AsyncSniffer,
+    IP,
+    TCP,
+    UDP,
+    get_if_list,
+    get_if_addr,
+)
 
 from feat import FEATURE_NAMES, calculate_features
 
@@ -20,8 +28,9 @@ from capture_config import (
     ML_API_URL,
     FLOW_TIMEOUT,
     OUTPUT_FILE,
+    PORTSCAN_PORT_THRESHOLD,
+    PORTSCAN_WINDOW,
 )
-
 
 # ============================================================
 # GLOBAL DATA
@@ -52,15 +61,12 @@ lock = threading.Lock()
 #
 # => PortScan
 #
-PORTSCAN_PORT_THRESHOLD = 10
 
 
 # Time period in which the distinct ports are counted.
 #
 # 5 seconds is suitable for the current controlled test.
 #
-PORTSCAN_WINDOW = 5.0
-
 
 # ============================================================
 # PORTSCAN TRACKING
@@ -1516,6 +1522,48 @@ def handle_packet(packet):
 
 
 # ============================================================
+# FIND CAPTURE INTERFACE
+# ============================================================
+
+def find_capture_interface():
+    """
+    Find the Scapy network interface whose IPv4 address
+    matches the AI-NIDS PC_IP.
+    """
+
+    print("\nSearching for capture interface...")
+
+    for iface in get_if_list():
+
+        try:
+            iface_ip = get_if_addr(iface)
+
+            print(
+                f"  {iface} -> {iface_ip}"
+            )
+
+            if iface_ip == PC_IP:
+
+                print(
+                    f"\n[AI-NIDS] Capture interface selected:"
+                )
+
+                print(
+                    f"           {iface}"
+                )
+
+                print(
+                    f"           IPv4: {iface_ip}\n"
+                )
+
+                return iface
+
+        except Exception:
+            continue
+
+    return None
+
+# ============================================================
 # MAIN
 # ============================================================
 
@@ -1633,52 +1681,96 @@ def main():
 
     portscan_worker.start()
 
+    capture_interface = find_capture_interface()
+
+    if capture_interface is None:
+
+        print(
+            f"\n[ERROR] Could not find a Scapy interface "
+            f"with IP {PC_IP}"
+        )
+
+        print(
+            "Packet capture cannot safely continue."
+        )
+
+        return
+
 
     # --------------------------------------------------------
     # Start Scapy capture
     # --------------------------------------------------------
 
+    sniffer = None
+
+
+    def stop_capture(signum=None, frame=None):
+
+        stop_event.set()
+
+        if sniffer is not None:
+
+            try:
+                sniffer.stop()
+
+            except Exception:
+                pass
+
+
+    signal.signal(
+        signal.SIGINT,
+        stop_capture
+    )
+
+
     try:
 
-        sniff(
-
+        sniffer = AsyncSniffer(
+            iface=capture_interface,
             filter="ip",
-
             prn=handle_packet,
-
-            store=False,
-
-            stop_filter=lambda _: (
-                stop_event.is_set()
-            )
+            store=False
         )
+
+        sniffer.start()
+
+
+        while not stop_event.wait(0.5):
+
+            pass
 
 
     except KeyboardInterrupt:
 
-        print(
-            "\nStopping capture..."
-        )
+        stop_capture()
 
 
     except Exception as e:
 
         print(
-            f"\n[ERROR] "
-            f"Packet capture failed: {e}"
+            f"\n[ERROR] Packet capture failed: {e}"
         )
 
-
         write_output(
-            f"\n[ERROR] "
-            f"Packet capture failed: "
+            f"\n[ERROR] Packet capture failed: "
             f"{e}\n"
         )
 
 
     finally:
 
-        stop_event.set()
+        stop_capture()
+
+
+        if sniffer is not None:
+
+            try:
+
+                sniffer.join()
+
+            except Exception:
+
+                pass
 
 
         # ----------------------------------------------------
@@ -1692,40 +1784,27 @@ def main():
 
             for key, flow in flows.items():
 
-                remaining.append(
-                    flow
-                )
-
+                remaining.append(flow)
 
             flows.clear()
 
 
-        # ----------------------------------------------------
-        # Send remaining flows to ML
-        # ----------------------------------------------------
-
         for flow in remaining:
 
-            process_flow(
-                flow
-            )
+            process_flow(flow)
 
 
         print(
             "\nCapture stopped."
         )
 
-
         print(
-            f"Results saved to "
-            f"{OUTPUT_FILE}"
+            f"Results saved to {OUTPUT_FILE}"
         )
-
 
 # ============================================================
 # PROGRAM ENTRY POINT
 # ============================================================
 
 if __name__ == "__main__":
-
     main()

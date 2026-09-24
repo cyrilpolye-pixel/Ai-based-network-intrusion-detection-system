@@ -12,6 +12,16 @@ python -m venv .venv
  python flow_cat.py
 
 
+cd projects/ainids/frontend
+
+cd projects/ainids/backend
+
+cd projects/ainids/ml-service
+
+cd projects/ainids/packet-capture
+
+cd projects/ainids
+
 
 source venv/bin/activate
 
@@ -24,15 +34,6 @@ cd C:\Users\\Desktop\packet-capture-test
 ../../
 
 
-cd projects/ainids/frontend
-
-cd projects/ainids/backend
-
-cd projects/ainids/ml-service
-
-cd projects/ainids/packet-capture
-
-cd projects/ainids
 
 git branch 
 

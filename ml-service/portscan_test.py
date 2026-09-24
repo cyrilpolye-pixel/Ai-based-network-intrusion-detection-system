@@ -8,7 +8,7 @@ TARGET_IP = "172.16.12.190"
 
 # Controlled test range
 START_PORT = 1
-END_PORT = 200
+END_PORT = 20
 
 DELAY = 0.05
 
