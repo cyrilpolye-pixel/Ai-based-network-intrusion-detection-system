@@ -6,6 +6,7 @@ const trafficRoutes = require("./routes/trafficRoutes");
 const authRoutes = require("./routes/authRoutes");
 const alertRoutes = require("./routes/alertRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const detectionRoutes = require("./routes/detectionRoutes");
 
 
 
@@ -28,6 +29,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/traffic", trafficRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/detections", detectionRoutes);
 
 
 
