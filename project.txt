@@ -9,6 +9,14 @@ python -m venv .venv
 .venv\Scripts\activate
 
 
+tree /F /A /I "node_modules" > structure.txt
+
+
+Get-ChildItem -Recurse -File | Where-Object
+ { $_.FullName -notmatch '\\node_modules\\' } 
+ | Select-Object FullName | Out-File -Encoding utf8 structure.txt
+
+
  python flow_cat.py
 
 

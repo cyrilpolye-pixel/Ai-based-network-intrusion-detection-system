@@ -32,6 +32,7 @@ from capture_config import (
     PORTSCAN_WINDOW,
 )
 
+BACKEND_DETECTION_URL = "http://127.0.0.1:5000/api/detections/portscan"
 # ============================================================
 # GLOBAL DATA
 # ============================================================
@@ -1336,6 +1337,46 @@ def flow_expiration_worker():
             process_flow(flow)
 
 
+
+def send_portscan_to_backend(portscan_alert):
+    """
+    Send a confirmed behavioral PortScan detection
+    from flow_cat.py to the Node.js backend.
+    """
+
+    try:
+        payload = {
+            "source_ip": portscan_alert["source_ip"],
+            "target_ip": portscan_alert["target_ip"],
+            "port_count": portscan_alert["port_count"],
+            "ports": portscan_alert["ports"],
+            "timestamp": portscan_alert["timestamp"].isoformat(),
+        }
+
+        response = requests.post(
+            BACKEND_DETECTION_URL,
+            json=payload,
+            timeout=5,
+        )
+
+        if response.ok:
+            print("✅ PortScan sent to backend successfully")
+            return True
+
+        print(
+            f"❌ Backend rejected PortScan: "
+            f"{response.status_code} - {response.text}"
+        )
+
+    except requests.exceptions.RequestException as error:
+        print(
+            f"❌ Could not send PortScan to backend: {error}"
+        )
+
+    return False
+
+
+
 # ============================================================
 # PACKET HANDLER
 # ============================================================
@@ -1344,6 +1385,7 @@ def handle_packet(packet):
 
     # --------------------------------------------------------
     # Ignore irrelevant packets
+    
     # --------------------------------------------------------
 
     if not packet_is_useful(
@@ -1425,7 +1467,8 @@ def handle_packet(packet):
         write_output(
             message
         )
-
+        # Send confirmed PortScan to backend
+        send_portscan_to_backend(portscan_alert)
 
     # --------------------------------------------------------
     # Get flow information
