@@ -100,6 +100,74 @@ const receivePortScan = async (req, res) => {
   }
 };
 
+
+const receiveFlow = async (req, res) => {
+  try {
+    const {
+      source_ip,
+      target_ip,
+      source_port,
+      target_port,
+      protocol,
+      timestamp,
+      duration,
+      bytes,
+      packets,
+      label,
+      prediction,
+      confidence,
+    } = req.body;
+
+    if (!source_ip || !target_ip) {
+      return res.status(400).json({
+        success: false,
+        message: "source_ip and target_ip are required.",
+      });
+    }
+
+    const traffic = await TrafficLog.create({
+      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      srcIP: source_ip,
+      dstIP: target_ip,
+      protocol: protocol || "Unknown",
+      srcPort: Number(source_port || 0),
+      dstPort: Number(target_port || 0),
+      duration: Number(duration || 0),
+      bytes: Number(bytes || 0),
+      packets: Number(packets || 0),
+      label: label || "Unknown",
+      prediction: prediction || "Pending",
+      confidence: Number(confidence || 0),
+    });
+
+    try {
+      const io = getIO();
+      io.emit("traffic-update", traffic);
+    } catch (socketError) {
+      console.error("Socket.IO emit failed:", socketError.message);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Traffic flow stored successfully.",
+      traffic,
+    });
+  } catch (error) {
+    console.error("Traffic ingestion error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to store traffic flow.",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
 module.exports = {
   receivePortScan,
+  receiveFlow,
 };

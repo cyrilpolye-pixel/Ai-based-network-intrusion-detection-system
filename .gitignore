@@ -37,16 +37,16 @@ backend/__pycache__/
 # =========================
 # ML datasets
 # =========================
-ml-service/data/*
-!ml-service/data/.gitkeep
+ids/data/*
+!ids/data/.gitkeep
 data/*.csv
 data/*.zip
 
 # =========================
 # Trained ML models
 # =========================
-ml-service/models/*
-!ml-service/models/.gitkeep
+ids/models/*
+!ids/models/.gitkeep
 models/*.pth
 models/*.pkl
 *.pkl
@@ -90,6 +90,6 @@ Thumbs.db
 # =========================
 # ignore files
 # =========================
-packet-capture/flow_output.txt
-packet-capture/todo.txt
+ids/flow_output.txt
+ids/todo.txt
 temp.txt
