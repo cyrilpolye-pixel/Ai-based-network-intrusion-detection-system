@@ -6,7 +6,8 @@ import threading
 import time
 from datetime import datetime
 import signal
-
+import csv
+from pathlib import Path
 import requests
 
 from scapy.all import (
@@ -34,6 +35,56 @@ from capture_config import (
 
 BACKEND_DETECTION_URL = "http://127.0.0.1:5000/api/detections/portscan"
 BACKEND_FLOW_URL = "http://127.0.0.1:5000/api/detections/flow"
+
+
+# --------------------------------------------------------
+# CSV FLOW OUTPUT
+# --------------------------------------------------------
+
+OUTPUT_DIR = Path("Outputs")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+CSV_METADATA_FIELDS = [
+    "timestamp",
+    "src_ip",
+    "dst_ip",
+    "src_port",
+    "dst_port",
+    "protocol",
+]
+
+CSV_RESULT_FIELDS = [
+    "prediction",
+    "attack_type",
+    "confidence",
+    "detection_method",
+]
+
+CSV_FIELDS = (
+    CSV_METADATA_FIELDS
+    + FEATURE_NAMES
+    + CSV_RESULT_FIELDS
+)
+
+csv_lock = threading.Lock()
+
+
+def get_csv_file():
+    """
+    Return today's CSV file.
+
+    Example:
+        Outputs/output-30-09-26.csv
+    """
+
+    date_string = datetime.now().strftime("%d-%m-%y")
+
+    return (
+        OUTPUT_DIR
+        / f"output-{date_string}.csv"
+    )
+
+
 
 # ============================================================
 # GLOBAL DATA
@@ -916,6 +967,164 @@ def send_to_ml(features):
             "error": str(e)
         }
 
+def write_flow_to_csv(
+    flow,
+    features,
+    prediction,
+    final_detection
+):
+    """
+    Save one completed flow and its
+    78 ML features to today's CSV file.
+    """
+
+    csv_file = get_csv_file()
+
+    # --------------------------------------------------------
+    # CNN prediction
+    # --------------------------------------------------------
+
+    ml_prediction = "UNKNOWN"
+    confidence = 0
+
+    if isinstance(prediction, dict):
+
+        ml_prediction = prediction.get(
+            "attack_type",
+            "UNKNOWN"
+        )
+
+        confidence = prediction.get(
+            "confidence",
+            0
+        )
+
+    # --------------------------------------------------------
+    # Final NIDS detection
+    # --------------------------------------------------------
+
+    if isinstance(final_detection, dict):
+
+        attack_type = final_detection.get(
+            "attack_type",
+            ml_prediction
+        )
+
+        detection_method = final_detection.get(
+            "detection_method",
+            "CNN"
+        )
+
+    else:
+
+        attack_type = str(
+            final_detection
+        )
+
+        detection_method = "CNN"
+
+    # --------------------------------------------------------
+    # CSV row
+    # --------------------------------------------------------
+
+    row = {
+
+        "timestamp":
+            datetime.now().isoformat(
+                timespec="seconds"
+            ),
+
+        "src_ip":
+            flow.get(
+                "src_ip",
+                ""
+            ),
+
+        "dst_ip":
+            flow.get(
+                "dst_ip",
+                ""
+            ),
+
+        "src_port":
+            flow.get(
+                "src_port",
+                ""
+            ),
+
+        "dst_port":
+            flow.get(
+                "dst_port",
+                ""
+            ),
+
+        "protocol":
+            flow.get(
+                "protocol",
+                ""
+            ),
+
+        "prediction":
+            ml_prediction,
+
+        "attack_type":
+            attack_type,
+
+        "confidence":
+            confidence,
+
+        "detection_method":
+            detection_method,
+    }
+
+    # --------------------------------------------------------
+    # Add the 78 ML features
+    # --------------------------------------------------------
+
+    for feature_name, feature_value in zip(
+        FEATURE_NAMES,
+        features
+    ):
+
+        row[feature_name] = feature_value
+
+    # --------------------------------------------------------
+    # Write CSV
+    # --------------------------------------------------------
+
+    with csv_lock:
+
+        file_exists = csv_file.exists()
+
+        file_has_data = (
+            file_exists
+            and
+            csv_file.stat().st_size > 0
+        )
+
+        with open(
+            csv_file,
+            "a",
+            newline="",
+            encoding="utf-8"
+        ) as csvfile:
+
+            writer = csv.DictWriter(
+                csvfile,
+                fieldnames=CSV_FIELDS
+            )
+
+            # Header only when file is new/empty
+            if not file_has_data:
+
+                writer.writeheader()
+
+            writer.writerow(row)
+
+    print(
+        f"[CSV] Flow saved -> {csv_file}"
+    )
+
 
 # ============================================================
 # PROCESS FLOW
@@ -1293,10 +1502,20 @@ def process_flow(flow):
     write_output(
         "".join(output)
     )
+# --------------------------------------------------------
+# Save completed flow to daily CSV
+# # --------------------------------------------------------
 
-    # --------------------------------------------------------
-    # Send completed flow to Node.js backend
-    # --------------------------------------------------------
+    write_flow_to_csv(
+        flow,
+        features,
+        prediction,
+        final_detection
+    )
+
+# --------------------------------------------------------
+# Send completed flow to Node.js backend
+# --------------------------------------------------------
 
     send_flow_to_backend(
         flow,
@@ -1952,6 +2171,7 @@ def main():
         print(
             f"Results saved to {OUTPUT_FILE}"
         )
+
 
 # ============================================================
 # PROGRAM ENTRY POINT
