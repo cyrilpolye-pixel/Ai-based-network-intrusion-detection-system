@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import socket from "../services/socket";
 import "./LiveMonitoring.css";
 
 type TrafficLog = {
@@ -12,16 +12,12 @@ type TrafficLog = {
   time: string;
 };
 
-const socket = io("http://localhost:5000", {
-  autoConnect: false,
-});
 
 const LiveMonitoring = () => {
   const [logs, setLogs] = useState<TrafficLog[]>([]);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    socket.connect();
 
     const handleConnect = () => {
       console.log("🔌 Connected to Live Monitoring");

@@ -9,7 +9,7 @@ python -m venv .venv
 .venv\Scripts\activate
 
 
-tree /F /A /I "node_modules" > structure.txt
+tree /F /A > structure.txt
 
 
 Get-ChildItem -Recurse -File | Where-Object
