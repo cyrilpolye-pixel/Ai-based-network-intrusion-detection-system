@@ -33,6 +33,8 @@ from capture_config import (
 )
 
 BACKEND_DETECTION_URL = "http://127.0.0.1:5000/api/detections/portscan"
+BACKEND_FLOW_URL = "http://127.0.0.1:5000/api/detections/flow"
+
 # ============================================================
 # GLOBAL DATA
 # ============================================================
@@ -1292,6 +1294,16 @@ def process_flow(flow):
         "".join(output)
     )
 
+    # --------------------------------------------------------
+    # Send completed flow to Node.js backend
+    # --------------------------------------------------------
+
+    send_flow_to_backend(
+        flow,
+        prediction,
+        final_detection
+    )
+
 
 # ============================================================
 # FLOW TIMEOUT
@@ -1375,7 +1387,103 @@ def send_portscan_to_backend(portscan_alert):
 
     return False
 
+def send_flow_to_backend(flow, prediction, final_detection):
+    """
+    Send a completed network flow to the Node.js backend
+    so it can be stored and displayed in Live Monitoring.
+    """
 
+    try:
+        attack_type = None
+        confidence = 0
+        is_attack = False
+
+        if isinstance(prediction, dict):
+            attack_type = prediction.get("attack_type")
+            confidence = float(
+                prediction.get("confidence", 0) or 0
+            )
+            is_attack = bool(
+                prediction.get("is_attack", False)
+            )
+
+        # Behavioral PortScan overrides CNN result
+        if flow.get("behavioral_detection") == "PortScan":
+            attack_type = "PortScan"
+            confidence = 1
+            is_attack = True
+
+        payload = {
+            "source_ip": flow["src_ip"],
+            "target_ip": flow["dst_ip"],
+            "source_port": flow["src_port"],
+            "target_port": flow["dst_port"],
+            "protocol": flow["protocol"],
+            "timestamp": datetime.fromtimestamp(
+                flow["first_time"]
+            ).isoformat(),
+            "duration": (
+                flow["last_time"]
+                - flow["first_time"]
+            ),
+            "bytes": sum(
+                len(packet)
+                for packet in flow["packets"]
+            ),
+            "packets": len(flow["packets"]),
+            "label": (
+                attack_type
+                if is_attack
+                else "BENIGN"
+            ),
+            "prediction": (
+                attack_type
+                if is_attack
+                else "BENIGN"
+            ),
+            "confidence": confidence,
+            "is_attack": is_attack,
+            "detection_method": (
+                final_detection.get(
+                    "detection_method"
+                )
+                if isinstance(final_detection, dict)
+                else "CNN"
+            ),
+        }
+
+        response = requests.post(
+            BACKEND_FLOW_URL,
+            json=payload,
+            timeout=5,
+        )
+
+        if response.ok:
+            print(
+                "✅ Traffic flow sent to backend successfully"
+            )
+            return True
+
+        print(
+            f"❌ Backend rejected traffic flow: "
+            f"{response.status_code} - {response.text}"
+        )
+
+    except requests.exceptions.RequestException as error:
+
+        print(
+            f"❌ Could not send traffic flow to backend: "
+            f"{error}"
+        )
+
+    except Exception as error:
+
+        print(
+            f"❌ Flow backend processing error: "
+            f"{error}"
+        )
+
+    return False
 
 # ============================================================
 # PACKET HANDLER
