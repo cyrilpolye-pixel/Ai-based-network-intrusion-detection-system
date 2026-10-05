@@ -164,10 +164,74 @@ const receiveFlow = async (req, res) => {
 };
 
 
+const receiveLiveFlow = async (req, res) => {
+  try {
+    const {
+      source_ip,
+      target_ip,
+      source_port,
+      target_port,
+      protocol,
+      timestamp,
+      duration,
+      bytes,
+      packets,
+      label,
+      prediction,
+      attack_type,
+      confidence,
+      is_attack,
+      detection_method,
+    } = req.body;
+
+    if (!source_ip || !target_ip) {
+      return res.status(400).json({
+        success: false,
+        message: "source_ip and target_ip are required.",
+      });
+    }
+
+    const liveTraffic = {
+      source_ip,
+      target_ip,
+      source_port: Number(source_port || 0),
+      target_port: Number(target_port || 0),
+      protocol: protocol || "Unknown",
+      timestamp: timestamp || new Date().toISOString(),
+      duration: Number(duration || 0),
+      bytes: Number(bytes || 0),
+      packets: Number(packets || 0),
+      label: label || "BENIGN",
+      prediction: prediction || "BENIGN",
+      attack_type: attack_type || prediction || label || "BENIGN",
+      confidence: Number(confidence || 0),
+      is_attack: Boolean(is_attack),
+      detection_method: detection_method || "CNN",
+    };
+
+    const io = getIO();
+
+    io.emit("live-traffic", liveTraffic);
+
+    return res.status(200).json({
+      success: true,
+      message: "Live traffic emitted successfully.",
+    });
+  } catch (error) {
+    console.error("Live traffic error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to emit live traffic.",
+      error: error.message,
+    });
+  }
+};
 
 
 
 module.exports = {
   receivePortScan,
   receiveFlow,
+  receiveLiveFlow,
 };

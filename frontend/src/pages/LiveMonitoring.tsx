@@ -12,13 +12,11 @@ type TrafficLog = {
   time: string;
 };
 
-
 const LiveMonitoring = () => {
   const [logs, setLogs] = useState<TrafficLog[]>([]);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-
     const handleConnect = () => {
       console.log("🔌 Connected to Live Monitoring");
       setConnected(true);
@@ -35,35 +33,49 @@ const LiveMonitoring = () => {
       ).toLowerCase();
 
       const isSuspicious =
-        prediction !== "" &&
-        prediction !== "normal" &&
-        prediction !== "benign" &&
-        prediction !== "unknown" &&
-        prediction !== "pending";
+        data.is_attack === true ||
+        (
+          prediction !== "" &&
+          prediction !== "normal" &&
+          prediction !== "benign" &&
+          prediction !== "unknown" &&
+          prediction !== "pending"
+        );
 
       const newLog: TrafficLog = {
         id:
           data._id ||
           `${Date.now()}-${Math.random()}`,
 
-        source: data.srcIP || "-",
+        source:
+          data.source_ip ||
+          data.srcIP ||
+          data.src_ip ||
+          "-",
 
-        destination: data.dstIP || "-",
+        destination:
+          data.target_ip ||
+          data.dstIP ||
+          data.dst_ip ||
+          "-",
 
-        protocol: data.protocol || "-",
+        protocol:
+          data.protocol ||
+          "-",
 
         status: isSuspicious
           ? "Suspicious"
           : "Normal",
 
         attackType: isSuspicious
-          ? data.prediction || data.label || "Unknown"
+          ? data.prediction ||
+            data.label ||
+            data.attack_type ||
+            "Unknown"
           : "BENIGN",
 
         time: data.timestamp
-          ? new Date(
-              data.timestamp
-            ).toLocaleTimeString()
+          ? new Date(data.timestamp).toLocaleTimeString()
           : new Date().toLocaleTimeString(),
       };
 
@@ -75,23 +87,26 @@ const LiveMonitoring = () => {
 
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
+
+    // Dedicated live-monitoring event.
     socket.on(
-      "traffic-update",
+      "live-traffic",
       handleTrafficUpdate
     );
 
+    // If Socket.IO was already connected before
+    // this page mounted, update the UI immediately.
+    if (socket.connected) {
+      setConnected(true);
+    }
+
     return () => {
       socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
       socket.off(
-        "disconnect",
-        handleDisconnect
-      );
-      socket.off(
-        "traffic-update",
+        "live-traffic",
         handleTrafficUpdate
       );
-
-      socket.disconnect();
     };
   }, []);
 
@@ -111,10 +126,7 @@ const LiveMonitoring = () => {
       <div className="live-header">
         <div>
           <h1>Live Monitoring</h1>
-
-          <p>
-            Real-time network traffic monitoring
-          </p>
+          <p>Real-time network traffic monitoring</p>
         </div>
 
         <div
@@ -123,17 +135,13 @@ const LiveMonitoring = () => {
           }`}
         >
           <span className="status-dot" />
-
-          {connected
-            ? "Connected"
-            : "Disconnected"}
+          {connected ? "Connected" : "Disconnected"}
         </div>
       </div>
 
       <div className="live-cards">
         <div className="live-card">
           <h3>Live Connections</h3>
-
           <strong>
             {connected ? logs.length : 0}
           </strong>
@@ -151,10 +159,7 @@ const LiveMonitoring = () => {
 
         <div className="live-card">
           <h3>Suspicious Events</h3>
-
-          <strong>
-            {suspiciousCount}
-          </strong>
+          <strong>{suspiciousCount}</strong>
         </div>
       </div>
 
@@ -187,24 +192,15 @@ const LiveMonitoring = () => {
                 {logs.map((log) => (
                   <tr key={log.id}>
                     <td>{log.time}</td>
-
                     <td>{log.source}</td>
-
-                    <td>
-                      {log.destination}
-                    </td>
-
+                    <td>{log.destination}</td>
                     <td>{log.protocol}</td>
-
-                    <td>
-                      {log.attackType}
-                    </td>
+                    <td>{log.attackType}</td>
 
                     <td>
                       <span
                         className={`traffic-status ${
-                          log.status ===
-                          "Suspicious"
+                          log.status === "Suspicious"
                             ? "suspicious"
                             : "normal"
                         }`}

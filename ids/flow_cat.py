@@ -34,7 +34,9 @@ from capture_config import (
 )
 
 BACKEND_DETECTION_URL = "http://127.0.0.1:5000/api/detections/portscan"
-BACKEND_FLOW_URL = "http://127.0.0.1:5000/api/detections/flow"
+BACKEND_FLOW_URL = "http://127.0.0.1:5000/api/detections/live-flow"
+#BACKEND_FLOW_URL = "http://127.0.0.1:5000/api/detections/flow"
+
 
 
 # --------------------------------------------------------
@@ -1513,6 +1515,15 @@ def process_flow(flow):
         final_detection
     )
 
+
+# Create compact payload for Live Monitoring
+    live_payload = create_live_payload(
+        flow,
+        prediction,
+        final_detection
+    )
+# Send compact payload to the React Live Monitoring page
+    send_live_monitor(live_payload)
 # --------------------------------------------------------
 # Send completed flow to Node.js backend
 # --------------------------------------------------------
@@ -1605,6 +1616,79 @@ def send_portscan_to_backend(portscan_alert):
         )
 
     return False
+def create_live_payload(flow, prediction, final_detection):
+    """
+    Create a compact payload for Live Monitoring.
+
+    The ML model still uses all 78 features internally.
+    The frontend receives only the information needed for monitoring.
+    """
+
+    attack_type = "BENIGN"
+    confidence = 0.0
+    is_attack = False
+
+    if isinstance(prediction, dict):
+        attack_type = prediction.get("attack_type") or "BENIGN"
+        confidence = float(prediction.get("confidence", 0) or 0)
+        is_attack = bool(prediction.get("is_attack", False))
+
+    # Behavioral PortScan detection overrides ML result
+    if flow.get("behavioral_detection") == "PortScan":
+        attack_type = "PortScan"
+        confidence = 1.0
+        is_attack = True
+
+    detection_method = "CNN"
+
+    if isinstance(final_detection, dict):
+        detection_method = (
+            final_detection.get("detection_method")
+            or detection_method
+        )
+
+    return {
+        "source_ip": flow["src_ip"],
+        "target_ip": flow["dst_ip"],
+        "source_port": flow["src_port"],
+        "target_port": flow["dst_port"],
+        "protocol": flow["protocol"],
+        "timestamp": datetime.fromtimestamp(
+            flow["first_time"]
+        ).isoformat(),
+        "duration": flow["last_time"] - flow["first_time"],
+        "bytes": sum(len(packet) for packet in flow["packets"]),
+        "packets": len(flow["packets"]),
+        "label": attack_type if is_attack else "BENIGN",
+        "prediction": attack_type if is_attack else "BENIGN",
+        "attack_type": attack_type if is_attack else "BENIGN",
+        "confidence": confidence,
+        "is_attack": is_attack,
+        "detection_method": detection_method,
+    }
+def send_live_monitor(payload):
+    """
+    Send compact flow information to the Live Monitoring system.
+    This endpoint only emits Socket.IO data and does not store
+    the live stream in MongoDB.
+    """
+
+    try:
+        response = requests.post(
+            BACKEND_FLOW_URL,
+            json=payload,
+            timeout=2
+        )
+
+        if response.status_code != 200:
+            print(
+                f"[LIVE] Backend error: "
+                f"{response.status_code} {response.text}"
+            )
+
+    except requests.RequestException as error:
+        print(f"[LIVE] Failed to send live traffic: {error}")
+
 
 def send_flow_to_backend(flow, prediction, final_detection):
     """
