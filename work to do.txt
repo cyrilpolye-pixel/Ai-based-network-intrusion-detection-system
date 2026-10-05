@@ -1,3 +1,38 @@
 portscan
 ddos
 dos hulk
+
+
+
+Then we still have the larger tasks:
+
+1. Live Monitoring
+
+live flow stream
+eventually display the 78 features appropriately
+attack/benign status
+
+2. Traffic Analysis
+
+historical flow data
+statistics
+filtering/search
+likely CSV/backend + MongoDB strategy
+
+3. Intrusion Alerts
+
+alerts from detected attacks
+already partially working through MongoDB
+
+4. Incident Details
+
+click an alert
+show its complete details
+
+5. Dashboard
+
+totals/statistics from stored data
+
+6. Reports
+
+generate/use historical detection data
