@@ -2,23 +2,9 @@ portscan
 ddos
 dos hulk
 
+=============================================================================
 
 
-Then we still have the larger tasks:
-
-check Dashboard and fix errors and make it a responisve site
-
-1. Live Monitoring
-
-live flow stream
-attack/benign status
-
-2. Traffic Analysis
-
-historical flow data
-statistics
-filtering/search
-likely CSV/backend + MongoDB strategy
 
 3. Intrusion Alerts
 
@@ -30,68 +16,7 @@ already partially working through MongoDB
 click an alert
 show its complete details
 
-5. Dashboard
-
-totals/statistics from stored data
 
 6. Reports
 
 generate/use historical detection data
-
-
-
-
-
-ok live monitoring page is done
-
-dashboard is not updating.
-traffic analysis id working well, but i dont knw what it needs.
-i just ran an attack, it showed up in live traffic, in traffic analysis its showing benign
-in intrusion alert it didnt get alerted
-
-Dashboard
-Live Monitoring
-Traffic Analysis
-Intrusion Alerts
-Reports
-Settings
-Profile
-
-other than these do we need anyhing else
-
-
-and this:
-
-PortScan ingestion error: MongoNetworkError: read ECONNRESET
-    at Connection.onSocketError (C:\Users\anna\projects\ainids\backend\node_modules\mongodb\lib\cmap\connection.js:124:22)
-    at TLSSocket.emit (node:events:531:35)
-    at emitErrorNT (node:internal/streams/destroy:170:8)
-    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
-    at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
-  errorLabelSet: Set(0) {},
-  beforeHandshake: false,
-  [cause]: Error: read ECONNRESET
-      at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20) {
-    errno: -4077,
-    code: 'ECONNRESET',
-    syscall: 'read'
-  }
-}
-PortScan ingestion error: MongoNetworkError: read ECONNRESET
-    at Connection.onSocketError (C:\Users\anna\projects\ainids\backend\node_modules\mongodb\lib\cmap\connection.js:124:22)
-    at TLSSocket.emit (node:events:531:35)
-    at emitErrorNT (node:internal/streams/destroy:170:8)
-    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
-    at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
-  errorLabelSet: Set(0) {},
-  beforeHandshake: false,
-  [cause]: Error: read ECONNRESET
-      at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20) {
-    errno: -4077,
-    code: 'ECONNRESET',
-    syscall: 'read'
-  }
-}
-
-
-after i just checked
