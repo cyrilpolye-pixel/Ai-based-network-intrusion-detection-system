@@ -1,71 +1,82 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import "./Sidebar.css";
 
 const menuItems = [
-  { name: "Dashboard", path: "/dashboard" },
-  { name: "Live Monitoring", path: "/live-monitoring" },
-  { name: "Traffic Analysis", path: "/traffic-analysis" },
-  { name: "Intrusion Alerts", path: "/alerts" },
-  { name: "Reports", path: "/reports" },
-  { name: "Settings", path: "/settings" },
-  { name: "Profile", path: "/profile" },
+  { name: "Dashboard", path: "/dashboard", icon: "📊" },
+  { name: "Live Monitoring", path: "/live-monitoring", icon: "📡" },
+  { name: "Traffic Analysis", path: "/traffic-analysis", icon: "📈" },
+  { name: "Intrusion Alerts", path: "/alerts", icon: "🚨" },
+  { name: "Reports", path: "/reports", icon: "📑" },
+  { name: "Settings", path: "/settings", icon: "⚙️" },
+  { name: "Profile", path: "/profile", icon: "👤" },
 ];
 
-export default function Sidebar() {
+type SidebarProps = {
+  isOpen?: boolean;
+  onClose?: () => void;
+};
+
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
   const handleLogout = () => {
+    if (onClose) onClose();
     logout();
     navigate("/", { replace: true });
   };
 
+  const handleLinkClick = () => {
+    if (onClose) onClose();
+  };
+
   return (
-    <div
-      style={{
-        width: "260px",
-        background: "#111827",
-        color: "white",
-        display: "flex",
-        flexDirection: "column",
-        padding: "20px",
-      }}
-    >
-      <h2 style={{ marginBottom: "40px" }}>AI-NIDS</h2>
+    <aside className={`app-sidebar ${isOpen ? "sidebar-open" : ""}`}>
+      {/* Header / Brand */}
+      <div className="sidebar-header">
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-icon">🛡️</div>
+          <h2>AI-NIDS</h2>
+        </div>
 
-      {menuItems.map((item) => (
-        <NavLink
-          key={item.path}
-          to={item.path}
-          style={({ isActive }) => ({
-            textDecoration: "none",
-            color: isActive ? "#60a5fa" : "#ffffff",
-            padding: "12px",
-            borderRadius: "8px",
-            marginBottom: "10px",
-            background: isActive ? "#1e293b" : "transparent",
-            transition: "0.2s",
-          })}
+        <button
+          className="sidebar-close-btn"
+          onClick={onClose}
+          aria-label="Close navigation sidebar"
         >
-          {item.name}
-        </NavLink>
-      ))}
+          ✕
+        </button>
+      </div>
 
-      <div style={{ flex: 1 }} />
+      {/* Navigation Links */}
+      <nav className="sidebar-nav">
+        {menuItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            onClick={handleLinkClick}
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "active" : ""}`
+            }
+          >
+            <span>{item.icon}</span>
+            <span>{item.name}</span>
+          </NavLink>
+        ))}
+      </nav>
 
-      <button
-        onClick={handleLogout}
-        style={{
-          padding: "12px",
-          background: "#ef4444",
-          color: "white",
-          border: "none",
-          borderRadius: "8px",
-          cursor: "pointer",
-        }}
-      >
-        Logout
-      </button>
-    </div>
+      {/* Footer / Logout */}
+      <div className="sidebar-footer">
+        <button
+          onClick={handleLogout}
+          className="sidebar-logout-btn"
+          aria-label="Logout"
+        >
+          <span>🚪</span>
+          <span>Logout</span>
+        </button>
+      </div>
+    </aside>
   );
 }

@@ -1,55 +1,60 @@
-export default function Topbar() {
+import { useAuth } from "../context/AuthContext";
+import "./Topbar.css";
+
+type TopbarProps = {
+  onToggleSidebar?: () => void;
+};
+
+export default function Topbar({ onToggleSidebar }: TopbarProps) {
+  const { user } = useAuth();
+
+  const displayName = user?.name || "Security Admin";
+  const displayRole = user?.role || "Administrator";
+  const initial = displayName.charAt(0).toUpperCase() || "A";
+
   return (
-    <div
-      style={{
-        height: "70px",
-        background: "#1e293b",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 25px",
-        color: "white",
-        borderBottom: "1px solid #334155",
-      }}
-    >
-      <input
-        type="text"
-        placeholder="Search..."
-        style={{
-          width: "300px",
-          padding: "10px",
-          borderRadius: "8px",
-          border: "none",
-        }}
-      />
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "20px",
-        }}
-      >
-        <span style={{ cursor: "pointer" }}>🔔</span>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-          }}
+    <header className="app-topbar">
+      <div className="topbar-left">
+        {/* Mobile Hamburger Toggle Button */}
+        <button
+          className="topbar-menu-btn"
+          onClick={onToggleSidebar}
+          aria-label="Toggle navigation menu"
         >
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "50%",
-              background: "#3b82f6",
-            }}
+          ☰
+        </button>
+
+        {/* Global Search Bar */}
+        <div className="topbar-search-wrapper">
+          <span className="topbar-search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Search IP, alerts, protocols..."
+            className="topbar-search-input"
           />
-          <span>Admin</span>
         </div>
       </div>
-    </div>
+
+      <div className="topbar-right">
+        {/* Notifications */}
+        <button
+          className="topbar-notification-btn"
+          aria-label="Security notifications"
+          title="Intrusion notifications"
+        >
+          🔔
+          <span className="notification-badge" />
+        </button>
+
+        {/* User Profile */}
+        <div className="topbar-profile">
+          <div className="profile-avatar">{initial}</div>
+          <div className="profile-info">
+            <span className="profile-name">{displayName}</span>
+            <span className="profile-role">{displayRole}</span>
+          </div>
+        </div>
+      </div>
+    </header>
   );
 }
