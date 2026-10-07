@@ -11,15 +11,16 @@ const getDashboardStats = async (req, res) => {
       severity: "Critical",
     });
 
-    // BENIGN traffic is considered normal traffic
+    // BENIGN or normal traffic (case-insensitive)
     const normalTraffic = await TrafficLog.countDocuments({
-      prediction: "BENIGN",
+      $or: [
+        { prediction: { $regex: /^(benign|normal)$/i } },
+        { label: { $regex: /^(benign|normal)$/i } },
+      ],
     });
 
-    // Anything other than BENIGN is considered attack traffic
-    const attackTraffic = await TrafficLog.countDocuments({
-      prediction: { $ne: "BENIGN" },
-    });
+    // Anything other than benign/normal is considered attack traffic
+    const attackTraffic = Math.max(0, totalTraffic - normalTraffic);
 
     const recentAlerts = await Alert.find()
       .sort({ createdAt: -1 })

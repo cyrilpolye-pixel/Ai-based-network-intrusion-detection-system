@@ -100,6 +100,7 @@
   width: 100%;
   border-collapse: collapse;
   margin-top: 15px;
+  min-width: 650px;
 }
 
 .live-table th {

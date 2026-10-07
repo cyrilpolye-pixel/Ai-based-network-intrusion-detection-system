@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
+import socket from "../services/socket";
 import "./TrafficAnalysis.css";
 
 type TrafficLog = {
@@ -101,6 +102,20 @@ export default function TrafficAnalysis() {
 
   useEffect(() => {
     fetchTraffic();
+
+    const handleTrafficUpdate = (newTraffic: TrafficLog) => {
+      setTraffic((prev) => {
+        const exists = prev.some((t) => t._id === newTraffic._id);
+        if (exists) return prev;
+        return [newTraffic, ...prev.slice(0, 499)];
+      });
+    };
+
+    socket.on("traffic-update", handleTrafficUpdate);
+
+    return () => {
+      socket.off("traffic-update", handleTrafficUpdate);
+    };
   }, []);
 
   const protocols = useMemo(() => {

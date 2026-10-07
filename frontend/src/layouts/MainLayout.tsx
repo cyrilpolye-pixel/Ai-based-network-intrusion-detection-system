@@ -1,40 +1,42 @@
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
+import "./MainLayout.css";
 
 export default function MainLayout() {
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const handleToggleSidebar = () => {
+    setMobileSidebarOpen((prev) => !prev);
+  };
+
+  const handleCloseSidebar = () => {
+    setMobileSidebarOpen(false);
+  };
+
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        background: "#0f172a",
-      }}
-    >
-      {/* Sidebar */}
-      <Sidebar />
-
-      {/* Main Content */}
+    <div className="main-layout">
+      {/* Mobile Backdrop */}
       <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <Topbar />
+        className={`sidebar-backdrop ${mobileSidebarOpen ? "active" : ""}`}
+        onClick={handleCloseSidebar}
+        aria-hidden="true"
+      />
 
-       <div
-    style={{
-        flex: 1,
-        padding: "25px",
-        overflowY: "auto",
-        overflowX: "hidden",
-        background: "#0f172a",
-    }}
->
+      {/* Responsive Sidebar */}
+      <Sidebar
+        isOpen={mobileSidebarOpen}
+        onClose={handleCloseSidebar}
+      />
+
+      {/* Main Content Area */}
+      <div className="main-content-wrapper">
+        <Topbar onToggleSidebar={handleToggleSidebar} />
+
+        <main className="main-content-scroll">
           <Outlet />
-        </div>
+        </main>
       </div>
     </div>
   );
