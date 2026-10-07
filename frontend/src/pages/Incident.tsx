@@ -52,21 +52,29 @@ export default function Incident() {
         setLoading(true);
         setError("");
 
-        const [alertsResponse, trafficResponse] =
-          await Promise.all([
-            api.get("/alerts"),
-            api.get("/traffic"),
-          ]);
+        let selectedAlert: Alert | null = null;
+        let selectedTraffic: TrafficLog | null = null;
 
-        const alerts: Alert[] =
-          alertsResponse.data.alerts || [];
+        try {
+          const directRes = await api.get(`/alerts/${alertId}`);
+          if (directRes.data?.alert) {
+            selectedAlert = directRes.data.alert;
+            if (
+              selectedAlert?.trafficLogId &&
+              typeof selectedAlert.trafficLogId === "object"
+            ) {
+              selectedTraffic = selectedAlert.trafficLogId as unknown as TrafficLog;
+            }
+          }
+        } catch {
+          // Fallback if needed
+        }
 
-        const trafficLogs: TrafficLog[] =
-          trafficResponse.data.traffic || [];
-
-        const selectedAlert = alerts.find(
-          (item) => item._id === alertId
-        );
+        if (!selectedAlert) {
+          const alertsResponse = await api.get("/alerts");
+          const alerts: Alert[] = alertsResponse.data.alerts || [];
+          selectedAlert = alerts.find((item) => item._id === alertId) || null;
+        }
 
         if (!selectedAlert) {
           setError("Incident alert was not found.");
@@ -75,22 +83,23 @@ export default function Incident() {
 
         setAlert(selectedAlert);
 
-        let trafficId: string | undefined;
+        if (!selectedTraffic) {
+          const trafficId =
+            typeof selectedAlert.trafficLogId === "string"
+              ? selectedAlert.trafficLogId
+              : selectedAlert.trafficLogId?._id;
 
-        if (typeof selectedAlert.trafficLogId === "string") {
-          trafficId = selectedAlert.trafficLogId;
-        } else {
-          trafficId =
-            selectedAlert.trafficLogId?._id;
+          if (trafficId) {
+            try {
+              const tRes = await api.get(`/traffic/${trafficId}`);
+              selectedTraffic = tRes.data?.traffic || null;
+            } catch {
+              selectedTraffic = null;
+            }
+          }
         }
 
-        if (trafficId) {
-          const selectedTraffic = trafficLogs.find(
-            (item) => item._id === trafficId
-          );
-
-          setTraffic(selectedTraffic || null);
-        }
+        setTraffic(selectedTraffic);
       } catch (err: any) {
         console.error(
           "Failed to load incident details:",

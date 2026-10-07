@@ -6,11 +6,6 @@ dos hulk
 
 
 
-3. Intrusion Alerts
-
-alerts from detected attacks
-already partially working through MongoDB
-
 4. Incident Details
 
 click an alert
@@ -19,4 +14,6 @@ show its complete details
 
 6. Reports
 
-generate/use historical detection data
+generate/use historical detection data    
+
+7. setting & profile
