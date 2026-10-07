@@ -254,34 +254,41 @@ const receiveLiveFlow = async (req, res) => {
     let traffic = null;
     let alert = null;
 
-    // Persist to MongoDB so Traffic Analysis, Intrusion Alerts & Dashboard stats have records
-    try {
-      traffic = await TrafficLog.create({
-        timestamp: flowDate,
-        srcIP: source_ip,
-        dstIP: target_ip,
-        protocol: protocol || "TCP",
-        srcPort: Number(source_port || 0),
-        dstPort: Number(target_port || 0),
-        duration: Number(duration || 0),
-        bytes: Number(bytes || 0),
-        packets: Number(packets || 0),
-        label: label || (isAttack ? attackName : "BENIGN"),
-        prediction: isAttack ? attackName : "BENIGN",
-        confidence: Number(confidence || (isAttack ? 0.95 : 0.99)),
-      });
+    // Storage optimization for MongoDB Free Tier (512 MB limit):
+    // 1. Attacks: ALWAYS saved 100% to MongoDB and create Alerts.
+    // 2. Benign: Sampled (~10-15%) to maintain baseline stats without exhausting storage.
+    // Note: Live Monitoring receives 100% of flows in real-time over Socket.IO (0 storage).
+    const shouldSaveToMongo = isAttack || Math.random() < 0.15;
 
-      if (isAttack) {
-        alert = await Alert.create({
-          trafficLogId: traffic._id,
-          attackType: attackName,
-          severity: getSeverity(attackName),
-          status: "Unread",
-          time: flowDate,
+    if (shouldSaveToMongo) {
+      try {
+        traffic = await TrafficLog.create({
+          timestamp: flowDate,
+          srcIP: source_ip,
+          dstIP: target_ip,
+          protocol: protocol || "TCP",
+          srcPort: Number(source_port || 0),
+          dstPort: Number(target_port || 0),
+          duration: Number(duration || 0),
+          bytes: Number(bytes || 0),
+          packets: Number(packets || 0),
+          label: label || (isAttack ? attackName : "BENIGN"),
+          prediction: isAttack ? attackName : "BENIGN",
+          confidence: Number(confidence || (isAttack ? 0.95 : 0.99)),
         });
+
+        if (isAttack) {
+          alert = await Alert.create({
+            trafficLogId: traffic._id,
+            attackType: attackName,
+            severity: getSeverity(attackName),
+            status: "Unread",
+            time: flowDate,
+          });
+        }
+      } catch (dbError) {
+        console.error("Database save failed in receiveLiveFlow:", dbError.message);
       }
-    } catch (dbError) {
-      console.error("Database save failed in receiveLiveFlow:", dbError.message);
     }
 
     // Emit live events to frontends
