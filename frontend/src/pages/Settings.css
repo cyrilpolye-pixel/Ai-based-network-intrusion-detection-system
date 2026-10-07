@@ -1,141 +1,413 @@
+/* ============================================================
+   SETTINGS PAGE STYLING
+   ============================================================ */
+
 .settings-page {
   width: 100%;
-  color: white;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .settings-header {
-  margin-bottom: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .settings-title {
   margin: 0;
   font-size: 28px;
+  font-weight: 700;
+  color: #ffffff;
 }
 
 .settings-description {
-  margin: 6px 0 0;
+  margin: 6px 0 0 0;
   color: #94a3b8;
+  font-size: 14px;
+}
+
+.settings-save-top-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.settings-save-top-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.settings-save-top-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Feedback Banner */
+.settings-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.banner-success {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid #22c55e;
+  color: #86efac;
+}
+
+.banner-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+}
+
+.banner-info {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid #3b82f6;
+  color: #93c5fd;
+}
+
+/* 2-Column Grid */
+.settings-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.settings-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .settings-card {
   background: #1e293b;
   border: 1px solid #334155;
   border-radius: 12px;
-  padding: 25px;
-  max-width: 700px;
+  padding: 24px;
 }
 
-.settings-checkbox-row {
-  margin-bottom: 18px;
+.settings-section-title {
+  margin: 0 0 18px 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
 }
 
-.settings-checkbox-label {
-  cursor: pointer;
-  color: #cbd5e1;
+/* Toggles */
+.settings-toggle-list {
   display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #334155;
+}
+
+.settings-toggle-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toggle-info strong {
+  font-size: 14px;
+  color: #f1f5f9;
+}
+
+.toggle-info span {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.settings-switch {
+  width: 20px;
+  height: 20px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+/* Inputs & Sliders */
+.settings-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.input-header-row {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 
-.settings-checkbox {
-  margin-right: 10px;
-  width: 16px;
-  height: 16px;
+.input-header-row label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.threshold-pill {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #38bdf8;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.settings-range-slider {
+  width: 100%;
+  accent-color: #2563eb;
   cursor: pointer;
 }
 
-.settings-field {
-  margin-top: 20px;
-}
-
-.settings-field-large-gap {
-  margin-top: 25px;
-}
-
-.settings-label {
-  display: block;
-  margin-bottom: 8px;
-  color: #cbd5e1;
-  font-weight: 500;
-}
-
-.settings-input {
+.settings-number-input {
   width: 100%;
-  box-sizing: border-box;
-  padding: 10px;
+  padding: 10px 12px;
   background: #0f172a;
   border: 1px solid #334155;
   border-radius: 8px;
-  color: white;
-  font-size: 15px;
+  color: #f8fafc;
+  font-size: 14px;
+  box-sizing: border-box;
 }
 
-.settings-input:focus {
+.settings-number-input:focus {
   outline: none;
   border-color: #3b82f6;
 }
 
-.settings-help {
-  display: block;
-  margin-top: 6px;
-  color: #64748b;
+.input-hint {
   font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
 }
 
-.settings-message {
-  margin-top: 22px;
-  padding: 11px 14px;
-  border-radius: 8px;
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  color: #93c5fd;
-  font-size: 13px;
-}
-
-.settings-actions {
+/* Action Buttons */
+.settings-actions-row {
   display: flex;
   gap: 12px;
-  margin-top: 30px;
-}
-
-.settings-save-button,
-.settings-reset-button {
-  border: none;
-  padding: 12px 22px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
+  margin-top: 10px;
+  flex-wrap: wrap;
 }
 
 .settings-save-button {
-  background: #3b82f6;
+  background: #2563eb;
   color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.settings-save-button:hover {
-  opacity: 0.9;
+.settings-save-button:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 .settings-reset-button {
-  background: #334155;
+  background: transparent;
+  border: 1px solid #475569;
   color: #cbd5e1;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .settings-reset-button:hover {
-  background: #475569;
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+/* Firewall Blocklist Card */
+.firewall-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.firewall-sub {
+  display: block;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.block-count-badge {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Manual Ban Form */
+.manual-ban-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.ban-input {
+  flex: 1;
+  min-width: 140px;
+  padding: 9px 12px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+}
+
+.ban-input:focus {
+  outline: none;
+  border-color: #ef4444;
+}
+
+.ban-submit-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ban-submit-btn:hover {
+  background: #b91c1c;
+}
+
+/* Blocked IP Table */
+.blocked-ip-table-wrapper {
+  overflow-x: auto;
+  max-height: 400px;
+}
+
+.blocked-ip-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.blocked-ip-table th {
+  text-align: left;
+  padding: 10px 8px;
+  font-size: 12px;
+  color: #94a3b8;
+  border-bottom: 1px solid #334155;
+}
+
+.blocked-ip-table td {
+  padding: 10px 8px;
+  font-size: 13px;
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+.ip-cell code {
+  color: #f87171;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.reason-cell {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.unblock-btn {
+  background: transparent;
+  border: 1px solid #64748b;
+  color: #94a3b8;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.unblock-btn:hover {
+  border-color: #22c55e;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.empty-blocklist {
+  padding: 40px 10px;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.empty-blocklist span {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #cbd5e1;
+}
+
+.empty-blocklist p {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .settings-layout-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 600px) {
-  .settings-card {
-    padding: 20px;
-  }
-
-  .settings-actions {
+  .settings-header {
     flex-direction: column;
   }
 
-  .settings-save-button,
-  .settings-reset-button {
+  .manual-ban-form {
+    flex-direction: column;
+  }
+
+  .ban-input,
+  .ban-submit-btn {
     width: 100%;
+    box-sizing: border-box;
   }
 }

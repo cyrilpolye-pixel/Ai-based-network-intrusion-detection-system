@@ -411,6 +411,9 @@ export default function Alerts() {
                       className={`alerts-row ${
                         alert.status === "Unread" ? "row-unread" : ""
                       }`}
+                      onClick={() => navigate(`/incident/${alert._id}`)}
+                      style={{ cursor: "pointer" }}
+                      title="Click to inspect complete incident details"
                     >
                       <td className="timestamp-cell">
                         {alert.time
@@ -453,7 +456,10 @@ export default function Alerts() {
                         <div className="alert-actions-cell">
                           <button
                             className="alert-action-btn primary"
-                            onClick={() => navigate(`/incident/${alert._id}`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/incident/${alert._id}`);
+                            }}
                             title="Inspect full packet telemetry & features"
                           >
                             Inspect
@@ -462,7 +468,10 @@ export default function Alerts() {
                           {alert.status === "Unread" && (
                             <button
                               className="alert-action-btn blue"
-                              onClick={() => updateStatus(alert._id, "Read")}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateStatus(alert._id, "Read");
+                              }}
                               title="Mark alert as acknowledged"
                             >
                               Mark Read
@@ -472,9 +481,10 @@ export default function Alerts() {
                           {alert.status !== "Resolved" && (
                             <button
                               className="alert-action-btn green"
-                              onClick={() =>
-                                updateStatus(alert._id, "Resolved")
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateStatus(alert._id, "Resolved");
+                              }}
                               title="Mark threat as mitigated"
                             >
                               Resolve
@@ -483,7 +493,10 @@ export default function Alerts() {
 
                           <button
                             className="alert-action-btn delete"
-                            onClick={() => deleteAlert(alert._id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteAlert(alert._id);
+                            }}
                             title="Dismiss alert"
                           >
                             ✕

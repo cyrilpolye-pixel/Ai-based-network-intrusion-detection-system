@@ -10,6 +10,8 @@ const detectionRoutes = require("./routes/detectionRoutes");
 
 
 
+const settingRoutes = require("./routes/settingRoutes");
+
 const app = express();
 
 // Middleware
@@ -30,6 +32,7 @@ app.use("/api/traffic", trafficRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/detections", detectionRoutes);
+app.use("/api/settings", settingRoutes);
 
 
 

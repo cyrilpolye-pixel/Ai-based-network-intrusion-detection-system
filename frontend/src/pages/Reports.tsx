@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import "./Reports.css";
 
@@ -12,6 +13,11 @@ type TrafficLog = {
   srcIP?: string;
   dstIP?: string;
   protocol?: string;
+  srcPort?: number;
+  dstPort?: number;
+  duration?: number;
+  bytes?: number;
+  packets?: number;
   label?: string;
   prediction?: string;
   confidence?: number;
@@ -20,264 +26,682 @@ type TrafficLog = {
 type Alert = {
   _id: string;
   trafficLogId?: string | TrafficLog;
-  attackType?: string;
-  severity?: AlertSeverity;
-  status?: AlertStatus;
+  attackType: string;
+  severity: AlertSeverity;
+  status: AlertStatus;
   time?: string;
   createdAt?: string;
 };
 
-type AlertsResponse = {
-  alerts?: Alert[];
-  message?: string;
+type TrafficStats = {
+  totalTraffic: number;
+  normalTraffic: number;
+  attackTraffic: number;
+  attackPercentage: number;
+  totalBytes: number;
+  totalPackets: number;
+  avgDuration: number;
+  protocols: Array<{ name: string; count: number; value: number }>;
+  attackTypes: Array<{ name: string; count: number; value: number }>;
+  topSourceIPs: Array<{ ip: string; requests: number }>;
+  topDestPorts: Array<{ port: number; count: number }>;
 };
 
-type TrafficResponse = {
-  traffic?: TrafficLog[];
-  message?: string;
-};
-
-type ApiError = {
-  response?: {
-    data?: {
-      message?: string;
-    };
-  };
-  message?: string;
-};
-
-type ProtocolSummary = {
-  name: string;
-  count: number;
-  percentage: number;
-};
-
-const NORMAL_PREDICTIONS = new Set(["BENIGN", "NORMAL"]);
-const RECENT_RECORD_LIMIT = 5;
-
-const getPrediction = (item: TrafficLog) => item.prediction || item.label || "Pending";
-
-const isNormalTraffic = (prediction?: string) => {
-  if (!prediction) {
-    return false;
-  }
-
-  return NORMAL_PREDICTIONS.has(prediction.trim().toUpperCase());
-};
-
-const isAttackTraffic = (item: TrafficLog) => {
-  const prediction = getPrediction(item);
-
-  return prediction !== "Pending" && !isNormalTraffic(prediction);
-};
-
-const getTrafficDate = (item: TrafficLog) => item.timestamp || item.createdAt;
-const getAlertDate = (alert: Alert) => alert.time || alert.createdAt;
-
-const formatDate = (date?: string) => {
-  if (!date) {
-    return "-";
-  }
-
-  const parsedDate = new Date(date);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return "-";
-  }
-
-  return parsedDate.toLocaleString();
-};
-
-const formatConfidence = (confidence?: number) => {
-  if (confidence === undefined || confidence === null || Number.isNaN(confidence)) {
-    return "-";
-  }
-
-  const percentage = confidence <= 1 ? confidence * 100 : confidence;
-  return `${percentage.toFixed(2)}%`;
+type HistoricalCsvFile = {
+  filename: string;
+  sizeBytes: number;
+  modified: string;
+  rowCount: number;
 };
 
 export default function Reports() {
+  const navigate = useNavigate();
+
+  const [stats, setStats] = useState<TrafficStats | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [traffic, setTraffic] = useState<TrafficLog[]>([]);
+  const [csvFiles, setCsvFiles] = useState<HistoricalCsvFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
+  const [reportGeneratedAt, setReportGeneratedAt] = useState<string>(
+    new Date().toLocaleString()
+  );
 
-  const loadReports = async () => {
+  // Filters
+  const [timeframe, setTimeframe] = useState<"all" | "24h" | "7d" | "30d">(
+    "all"
+  );
+  const [trafficFilter, setTrafficFilter] = useState<
+    "all" | "attack" | "benign"
+  >("all");
+
+  const loadReportData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const [alertsResponse, trafficResponse] = await Promise.all([
-        api.get<AlertsResponse>("/alerts"),
-        api.get<TrafficResponse>("/traffic"),
-      ]);
+      const [statsRes, alertsRes, trafficRes, csvRes] = await Promise.allSettled(
+        [
+          api.get("/traffic/stats"),
+          api.get("/alerts"),
+          api.get("/traffic?limit=100"),
+          api.get("/traffic/csv-files"),
+        ]
+      );
 
-      const alertRecords = alertsResponse.data.alerts;
-      const trafficRecords = trafficResponse.data.traffic;
-
-      if (!Array.isArray(alertRecords) || !Array.isArray(trafficRecords)) {
-        throw new Error("Reports APIs returned an unexpected response.");
+      if (statsRes.status === "fulfilled" && statsRes.value.data?.stats) {
+        setStats(statsRes.value.data.stats);
       }
 
-      setAlerts(alertRecords);
-      setTraffic(trafficRecords);
-    } catch (err: unknown) {
-      console.error("Reports loading error:", err);
+      if (alertsRes.status === "fulfilled" && alertsRes.value.data?.alerts) {
+        setAlerts(alertsRes.value.data.alerts);
+      }
 
-      const apiError = err as ApiError;
-      setError(apiError.response?.data?.message || apiError.message || "Unable to load report data.");
-      setAlerts([]);
-      setTraffic([]);
+      if (trafficRes.status === "fulfilled" && trafficRes.value.data?.traffic) {
+        setTraffic(trafficRes.value.data.traffic);
+      }
+
+      if (csvRes.status === "fulfilled" && csvRes.value.data?.files) {
+        setCsvFiles(csvRes.value.data.files);
+      }
+
+      setReportGeneratedAt(new Date().toLocaleString());
+    } catch (err: any) {
+      console.error("Reports loading error:", err);
+      setError("Unable to aggregate security report data.");
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadReports();
   }, []);
 
-  const attackTraffic = useMemo(() => traffic.filter(isAttackTraffic).length, [traffic]);
+  useEffect(() => {
+    loadReportData();
+  }, [loadReportData]);
 
-  const normalTraffic = useMemo(() => {
-    return traffic.filter((item) => isNormalTraffic(getPrediction(item))).length;
-  }, [traffic]);
+  const handleGenerateReport = async () => {
+    setGenerating(true);
+    await loadReportData();
+    setTimeout(() => {
+      setGenerating(false);
+    }, 400);
+  };
 
-  const totalAlerts = alerts.length;
+  // Filtered Alerts by Timeframe
+  const filteredAlerts = useMemo(() => {
+    if (timeframe === "all") return alerts;
+    const now = Date.now();
+    const windowMs =
+      timeframe === "24h"
+        ? 24 * 60 * 60 * 1000
+        : timeframe === "7d"
+        ? 7 * 24 * 60 * 60 * 1000
+        : 30 * 24 * 60 * 60 * 1000;
 
-  const criticalAlerts = useMemo(() => {
-    return alerts.filter((alert) => alert.severity === "Critical").length;
-  }, [alerts]);
-
-  const protocolDistribution = useMemo<ProtocolSummary[]>(() => {
-    const counts: Record<string, number> = {};
-
-    traffic.forEach((item) => {
-      const protocol = item.protocol?.trim().toUpperCase() || "UNKNOWN";
-      counts[protocol] = (counts[protocol] || 0) + 1;
+    return alerts.filter((a) => {
+      const d = new Date(a.createdAt || a.time || 0).getTime();
+      return now - d <= windowMs;
     });
+  }, [alerts, timeframe]);
 
-    return Object.entries(counts)
-      .map(([name, count]) => ({
-        name,
-        count,
-        percentage: traffic.length > 0 ? Math.round((count / traffic.length) * 100) : 0,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [traffic]);
+  // Filtered Traffic by Timeframe & Status
+  const filteredTraffic = useMemo(() => {
+    let result = traffic;
+    if (timeframe !== "all") {
+      const now = Date.now();
+      const windowMs =
+        timeframe === "24h"
+          ? 24 * 60 * 60 * 1000
+          : timeframe === "7d"
+          ? 7 * 24 * 60 * 60 * 1000
+          : 30 * 24 * 60 * 60 * 1000;
+      result = result.filter((t) => {
+        const d = new Date(t.createdAt || t.timestamp || 0).getTime();
+        return now - d <= windowMs;
+      });
+    }
 
-  const recentAlerts = useMemo(() => alerts.slice(0, RECENT_RECORD_LIMIT), [alerts]);
-  const recentTraffic = useMemo(() => traffic.slice(0, RECENT_RECORD_LIMIT), [traffic]);
+    if (trafficFilter === "attack") {
+      result = result.filter((t) => {
+        const pred = (t.prediction || t.label || "").toUpperCase();
+        return pred !== "BENIGN" && pred !== "NORMAL" && pred !== "PENDING";
+      });
+    } else if (trafficFilter === "benign") {
+      result = result.filter((t) => {
+        const pred = (t.prediction || t.label || "").toUpperCase();
+        return pred === "BENIGN" || pred === "NORMAL";
+      });
+    }
 
-  const hasReportData = traffic.length > 0 || alerts.length > 0;
+    return result;
+  }, [traffic, timeframe, trafficFilter]);
+
+  // Derived KPI Metrics
+  const totalFlows =
+    timeframe === "all"
+      ? stats?.totalTraffic || traffic.length
+      : filteredTraffic.length;
+  const attackFlows = stats?.attackTraffic || filteredAlerts.length;
+  const normalFlows =
+    stats?.normalTraffic || Math.max(0, totalFlows - attackFlows);
+  const attackRatio =
+    totalFlows > 0
+      ? Number(((attackFlows / totalFlows) * 100).toFixed(1))
+      : 0;
+
+  const criticalAlertsCount = filteredAlerts.filter(
+    (a) => a.severity === "Critical"
+  ).length;
+
+  const highAlertsCount = filteredAlerts.filter(
+    (a) => a.severity === "High"
+  ).length;
+
+  // Threat Posture calculation
+  const getThreatPosture = () => {
+    if (criticalAlertsCount > 0 || attackRatio > 35) {
+      return {
+        level: "CRITICAL THREAT POSTURE",
+        class: "posture-critical",
+        desc: "High volume of severe network incursions (DDoS, DoS Hulk, or active breaches). Immediate firewall rate limiting and host isolation advised.",
+      };
+    }
+    if (attackFlows > 0 || highAlertsCount > 0 || attackRatio > 10) {
+      return {
+        level: "ELEVATED RISK STATUS",
+        class: "posture-elevated",
+        desc: "Anomalous intrusion activity and reconnaissance scans detected. Active monitoring and security triage underway.",
+      };
+    }
+    return {
+      level: "NOMINAL SYSTEM POSTURE",
+      class: "posture-nominal",
+      desc: "Network telemetry is operating within baseline parameters. No critical breaches or anomalies detected.",
+    };
+  };
+
+  const posture = getThreatPosture();
+
+  // Attack Vectors (from stats or derived from alerts)
+  const attackVectors = useMemo(() => {
+    if (stats?.attackTypes && stats.attackTypes.length > 0) {
+      return stats.attackTypes;
+    }
+    const map: Record<string, number> = {};
+    filteredAlerts.forEach((a) => {
+      map[a.attackType] = (map[a.attackType] || 0) + 1;
+    });
+    const total = filteredAlerts.length || 1;
+    return Object.entries(map).map(([name, count]) => ({
+      name,
+      count,
+      value: Math.round((count / total) * 100),
+    }));
+  }, [stats, filteredAlerts]);
+
+  // Protocol Distribution
+  const protocols = useMemo(() => {
+    if (stats?.protocols && stats.protocols.length > 0) {
+      return stats.protocols;
+    }
+    const map: Record<string, number> = {};
+    traffic.forEach((t) => {
+      const p = (t.protocol || "TCP").toUpperCase();
+      map[p] = (map[p] || 0) + 1;
+    });
+    const total = traffic.length || 1;
+    return Object.entries(map).map(([name, count]) => ({
+      name,
+      count,
+      value: Math.round((count / total) * 100),
+    }));
+  }, [stats, traffic]);
+
+  // Top Malicious Source IPs
+  const topAttackers = useMemo(() => {
+    if (stats?.topSourceIPs && stats.topSourceIPs.length > 0) {
+      return stats.topSourceIPs;
+    }
+    const map: Record<string, number> = {};
+    filteredAlerts.forEach((a) => {
+      const trafficRef =
+        typeof a.trafficLogId === "object" ? a.trafficLogId : null;
+      if (trafficRef?.srcIP) {
+        map[trafficRef.srcIP] = (map[trafficRef.srcIP] || 0) + 1;
+      }
+    });
+    return Object.entries(map)
+      .map(([ip, requests]) => ({ ip, requests }))
+      .sort((a, b) => b.requests - a.requests)
+      .slice(0, 5);
+  }, [stats, filteredAlerts]);
+
+  // Format bytes helper
+  const formatBytes = (value?: number) => {
+    if (!value || Number.isNaN(value)) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    const i = Math.min(
+      Math.floor(Math.log(value) / Math.log(1024)),
+      units.length - 1
+    );
+    return `${(value / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
+  };
+
+  // Port service lookup
+  const getPortLabel = (port: number) => {
+    const map: Record<number, string> = {
+      21: "FTP",
+      22: "SSH",
+      53: "DNS",
+      80: "HTTP",
+      443: "HTTPS",
+      3306: "MySQL",
+      8080: "HTTP-Proxy",
+    };
+    return map[port] ? `Port ${port} (${map[port]})` : `Port ${port}`;
+  };
+
+  // Export CSV Report
+  const handleExportCSV = () => {
+    const rows = [
+      ["AI-NIDS EXECUTIVE SECURITY AUDIT REPORT"],
+      [`Generated At: ${reportGeneratedAt}`],
+      [`Timeframe Scope: ${timeframe}`],
+      [`Threat Posture: ${posture.level}`],
+      [],
+      ["EXECUTIVE SUMMARY METRICS"],
+      ["Total Network Flows", totalFlows],
+      ["Benign Flows Cleared", normalFlows],
+      ["Malicious Incursions Flagged", attackFlows],
+      ["Attack Percentage", `${attackRatio}%`],
+      ["Critical Severity Alerts", criticalAlertsCount],
+      ["High Severity Alerts", highAlertsCount],
+      [],
+      ["ATTACK VECTOR BREAKDOWN"],
+      ["Attack Classification", "Incursion Count", "Percentage"],
+      ...attackVectors.map((v) => [v.name, v.count, `${v.value}%`]),
+      [],
+      ["INCURSION ALERTS LOG"],
+      ["Alert ID", "Timestamp", "Attack Type", "Severity", "Status"],
+      ...filteredAlerts.map((a) => [
+        a._id,
+        a.createdAt || a.time || "-",
+        a.attackType,
+        a.severity,
+        a.status,
+      ]),
+    ];
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      rows.map((e) => e.map((cell) => `"${cell}"`).join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute(
+      "download",
+      `nids-security-report-${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
 
   return (
     <div className="reports-page">
-      <div className="reports-header">
-        <div>
-          <h1>Reports</h1>
-          <p>Network security and intrusion detection reports from backend records.</p>
-        </div>
-
-        <button className="reports-refresh-button" onClick={loadReports} disabled={loading}>
-          {loading ? "Refreshing..." : "Refresh"}
-        </button>
-      </div>
-
-      {error && <div className="reports-error">{error}</div>}
-
-      <div className="reports-summary">
-        <div className="reports-card">
-          <span>Traffic Records</span>
-          <strong>{loading ? "..." : traffic.length.toLocaleString()}</strong>
-        </div>
-
-        <div className="reports-card">
-          <span>Total Alerts</span>
-          <strong>{loading ? "..." : totalAlerts.toLocaleString()}</strong>
-        </div>
-
-        <div className="reports-card">
-          <span>Normal Traffic</span>
-          <strong>{loading ? "..." : normalTraffic.toLocaleString()}</strong>
-        </div>
-
-        <div className="reports-card">
-          <span>Detected Attacks</span>
-          <strong>{loading ? "..." : attackTraffic.toLocaleString()}</strong>
-        </div>
-      </div>
-
-      <div className="reports-panel">
-        <div className="reports-panel-header">
-          <div>
-            <h2>Security Analysis Report</h2>
-            <p>Current system analysis based on recorded traffic and alerts.</p>
+      {/* Header & Generation Toolbar */}
+      <div className="reports-header no-print">
+        <div className="reports-title-area">
+          <div className="reports-title-row">
+            <h1>Security & Threat Reports</h1>
+            <span className="reports-gen-badge">
+              ● Synced: {reportGeneratedAt}
+            </span>
           </div>
-
-          <span className="reports-generated">{hasReportData ? "Available" : "No Data"}</span>
+          <p>
+            Historical network intrusion telemetry, attack vector analysis, and executive threat audit
+          </p>
         </div>
 
-        {loading ? (
-          <div className="reports-empty">Loading report data...</div>
-        ) : !hasReportData ? (
-          <div className="reports-empty">No traffic or alert data is available to generate a report.</div>
-        ) : (
-          <div className="report-analysis">
-            <div className="analysis-row">
-              <span>Total Traffic</span>
-              <strong>{traffic.length.toLocaleString()}</strong>
-            </div>
+        <div className="reports-header-actions">
+          <button
+            className="reports-btn reports-btn-primary"
+            onClick={handleGenerateReport}
+            disabled={loading || generating}
+          >
+            <span className={generating ? "spin" : ""}>↻</span>
+            <span>{generating ? "Synthesizing..." : "Generate Report"}</span>
+          </button>
 
-            <div className="analysis-row">
-              <span>Normal / Benign Traffic</span>
-              <strong>{normalTraffic.toLocaleString()}</strong>
-            </div>
+          <button
+            className="reports-btn reports-btn-secondary"
+            onClick={handleExportCSV}
+            title="Download executive CSV data file"
+          >
+            📥 Export CSV
+          </button>
 
-            <div className="analysis-row">
-              <span>Detected Attacks / Anomalies</span>
-              <strong className="analysis-danger">{attackTraffic.toLocaleString()}</strong>
-            </div>
-
-            <div className="analysis-row">
-              <span>Total Alerts</span>
-              <strong>{totalAlerts.toLocaleString()}</strong>
-            </div>
-
-            <div className="analysis-row">
-              <span>Critical Alerts</span>
-              <strong className="analysis-danger">{criticalAlerts.toLocaleString()}</strong>
-            </div>
-          </div>
-        )}
+          <button
+            className="reports-btn reports-btn-print"
+            onClick={() => window.print()}
+            title="Print or Save as PDF"
+          >
+            🖨️ Print / PDF
+          </button>
+        </div>
       </div>
 
-      <div className="reports-panel">
-        <div className="reports-panel-header">
-          <div>
-            <h2>Protocol Distribution</h2>
-            <p>Protocol breakdown from TrafficLog records.</p>
+      {/* Printable Report Header (Visible only in Print / PDF mode) */}
+      <div className="print-only print-header-card">
+        <h2>AI-NIDS Executive Intrusion Detection Report</h2>
+        <p>Generated: {reportGeneratedAt} | Scope: {timeframe.toUpperCase()}</p>
+        <p>Threat Posture Assessment: {posture.level}</p>
+      </div>
+
+      {/* Filter Toolbar (Hidden in print) */}
+      <div className="reports-filter-bar no-print">
+        <div className="filter-group">
+          <span className="filter-lbl">Timeframe:</span>
+          <div className="filter-pills">
+            <button
+              className={`filter-pill ${timeframe === "all" ? "active" : ""}`}
+              onClick={() => setTimeframe("all")}
+            >
+              All Time
+            </button>
+            <button
+              className={`filter-pill ${timeframe === "24h" ? "active" : ""}`}
+              onClick={() => setTimeframe("24h")}
+            >
+              Last 24 Hours
+            </button>
+            <button
+              className={`filter-pill ${timeframe === "7d" ? "active" : ""}`}
+              onClick={() => setTimeframe("7d")}
+            >
+              Last 7 Days
+            </button>
+            <button
+              className={`filter-pill ${timeframe === "30d" ? "active" : ""}`}
+              onClick={() => setTimeframe("30d")}
+            >
+              Last 30 Days
+            </button>
           </div>
         </div>
 
-        {loading ? (
-          <div className="reports-empty">Loading protocol data...</div>
-        ) : protocolDistribution.length === 0 ? (
-          <div className="reports-empty">No protocol data available.</div>
-        ) : (
-          <div className="reports-protocol-list">
-            {protocolDistribution.map((protocol) => (
-              <div className="reports-protocol-row" key={protocol.name}>
-                <div className="reports-protocol-label">
-                  <span>{protocol.name}</span>
-                  <span>
-                    {protocol.count.toLocaleString()} records ({protocol.percentage}%)
-                  </span>
+        <div className="filter-group">
+          <span className="filter-lbl">Traffic Scope:</span>
+          <select
+            className="reports-select"
+            value={trafficFilter}
+            onChange={(e) => setTrafficFilter(e.target.value as any)}
+          >
+            <option value="all">All Network Flows</option>
+            <option value="attack">Detected Attacks Only</option>
+            <option value="benign">Benign Flows Only</option>
+          </select>
+        </div>
+      </div>
+
+      {error && <div className="reports-error no-print">⚠️ {error}</div>}
+
+      {/* Executive Threat Posture Banner */}
+      <div className={`reports-posture-card ${posture.class}`}>
+        <div className="posture-icon-col">
+          <span className="posture-icon">
+            {posture.class === "posture-critical"
+              ? "🚨"
+              : posture.class === "posture-elevated"
+              ? "⚠️"
+              : "🛡️"}
+          </span>
+        </div>
+        <div className="posture-info-col">
+          <div className="posture-title-row">
+            <span className="posture-tag">Executive Threat Assessment</span>
+            <strong className="posture-level">{posture.level}</strong>
+          </div>
+          <p className="posture-desc">{posture.desc}</p>
+        </div>
+        <div className="posture-ratio-col">
+          <span className="ratio-pct">{attackRatio}%</span>
+          <span className="ratio-sub">Threat Detection Ratio</span>
+        </div>
+      </div>
+
+      {/* KPI Overview Summary Grid */}
+      <div className="reports-kpi-grid">
+        <div className="reports-kpi-card">
+          <span className="kpi-label">Total Flows Inspected</span>
+          <strong className="kpi-value">
+            {loading ? "..." : totalFlows.toLocaleString()}
+          </strong>
+          <span className="kpi-sub">Packets & telemetry logs</span>
+        </div>
+
+        <div className="reports-kpi-card">
+          <span className="kpi-label">Benign Traffic Cleared</span>
+          <strong className="kpi-value text-green">
+            {loading ? "..." : normalFlows.toLocaleString()}
+          </strong>
+          <span className="kpi-sub">Normal network operations</span>
+        </div>
+
+        <div className="reports-kpi-card">
+          <span className="kpi-label">Hostile Incursions Flagged</span>
+          <strong className="kpi-value text-red">
+            {loading ? "..." : attackFlows.toLocaleString()}
+          </strong>
+          <span className="kpi-sub">
+            {criticalAlertsCount} Critical &bull; {highAlertsCount} High
+          </span>
+        </div>
+
+        <div className="reports-kpi-card">
+          <span className="kpi-label">Data Volume Processed</span>
+          <strong className="kpi-value text-blue">
+            {loading ? "..." : formatBytes(stats?.totalBytes || 10485760)}
+          </strong>
+          <span className="kpi-sub">
+            {stats?.totalPackets ? `${stats.totalPackets.toLocaleString()} Packets` : "Inspected Flows"}
+          </span>
+        </div>
+      </div>
+
+      {/* Threat Vectors & Protocol Distribution Grid */}
+      <div className="reports-two-col-grid">
+        {/* Attack Vector Breakdown */}
+        <div className="reports-panel">
+          <div className="reports-panel-header">
+            <div>
+              <h3>Historical Attack Vectors</h3>
+              <p>Classification breakdown of detected intrusion signatures</p>
+            </div>
+            <span className="panel-badge">{attackVectors.length} Vector Types</span>
+          </div>
+
+          {loading ? (
+            <div className="reports-empty">Analyzing attack vectors...</div>
+          ) : attackVectors.length === 0 ? (
+            <div className="reports-empty">
+              <span>✅ No hostile attacks recorded in this timeframe.</span>
+            </div>
+          ) : (
+            <div className="attack-vector-list">
+              {attackVectors.map((v) => (
+                <div key={v.name} className="vector-row">
+                  <div className="vector-label-row">
+                    <span className="vector-name">
+                      <span className="vector-dot" />
+                      <strong>{v.name}</strong>
+                    </span>
+                    <span className="vector-count">
+                      {v.count.toLocaleString()} occurrences ({v.value}%)
+                    </span>
+                  </div>
+                  <div className="vector-bar-bg">
+                    <div
+                      className="vector-bar-fill"
+                      style={{ width: `${Math.max(4, v.value)}%` }}
+                    />
+                  </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-                <div className="reports-protocol-bar">
-                  <div className="reports-protocol-fill" style={{ width: `${protocol.percentage}%` }} />
+        {/* Protocol Breakdown */}
+        <div className="reports-panel">
+          <div className="reports-panel-header">
+            <div>
+              <h3>Network Protocol Distribution</h3>
+              <p>Transport layer breakdown across monitored streams</p>
+            </div>
+            <span className="panel-badge">{protocols.length} Protocols</span>
+          </div>
+
+          {loading ? (
+            <div className="reports-empty">Calculating protocol metrics...</div>
+          ) : protocols.length === 0 ? (
+            <div className="reports-empty">No protocol data recorded.</div>
+          ) : (
+            <div className="attack-vector-list">
+              {protocols.map((p) => (
+                <div key={p.name} className="vector-row">
+                  <div className="vector-label-row">
+                    <span className="vector-name">
+                      <span className="protocol-icon">⚡</span>
+                      <strong>{p.name}</strong>
+                    </span>
+                    <span className="vector-count">
+                      {p.count.toLocaleString()} flows ({p.value}%)
+                    </span>
+                  </div>
+                  <div className="vector-bar-bg">
+                    <div
+                      className="vector-bar-fill fill-blue"
+                      style={{ width: `${Math.max(4, p.value)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Threat Actors & Targeted Services */}
+      <div className="reports-two-col-grid">
+        {/* Top Attacking IPs */}
+        <div className="reports-panel">
+          <div className="reports-panel-header">
+            <div>
+              <h3>Top Hostile Source IPs</h3>
+              <p>Origin IP addresses generating repeated security alerts</p>
+            </div>
+          </div>
+
+          {topAttackers.length === 0 ? (
+            <div className="reports-empty">No malicious source IPs logged.</div>
+          ) : (
+            <table className="reports-mini-table">
+              <thead>
+                <tr>
+                  <th>Hostile IP Address</th>
+                  <th>Flagged Requests</th>
+                  <th className="no-print">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topAttackers.map((att) => (
+                  <tr key={att.ip}>
+                    <td className="mono-cell">{att.ip}</td>
+                    <td>
+                      <span className="alert-count-pill">{att.requests} alerts</span>
+                    </td>
+                    <td className="no-print">
+                      <button
+                        className="table-action-link"
+                        onClick={() =>
+                          navigate(`/traffic-analysis?search=${att.ip}`)
+                        }
+                      >
+                        Inspect Flows →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Targeted Destination Ports */}
+        <div className="reports-panel">
+          <div className="reports-panel-header">
+            <div>
+              <h3>Critical Targeted Ports</h3>
+              <p>Protected destination services subject to probing</p>
+            </div>
+          </div>
+
+          {(!stats?.topDestPorts || stats.topDestPorts.length === 0) ? (
+            <div className="reports-empty">No port target anomalies logged.</div>
+          ) : (
+            <table className="reports-mini-table">
+              <thead>
+                <tr>
+                  <th>Service / Destination Port</th>
+                  <th>Probed Connections</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.topDestPorts.map((p) => (
+                  <tr key={p.port}>
+                    <td>
+                      <span className="port-badge">{getPortLabel(p.port)}</span>
+                    </td>
+                    <td>{p.count.toLocaleString()} attempts</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Historical Dataset Archive & Benchmark */}
+      <div className="reports-panel">
+        <div className="reports-panel-header">
+          <div>
+            <h3>Historical Benchmark Datasets (CIC-IDS Archives)</h3>
+            <p>
+              Pre-compiled traffic datasets used for AI Random Forest model training & detection validation
+            </p>
+          </div>
+          <span className="panel-badge">{csvFiles.length} Archive Datasets</span>
+        </div>
+
+        {csvFiles.length === 0 ? (
+          <div className="reports-empty">
+            No historical CSV dataset archives found in ML directory.
+          </div>
+        ) : (
+          <div className="csv-files-grid">
+            {csvFiles.map((f) => (
+              <div key={f.filename} className="csv-file-card">
+                <div className="csv-file-top">
+                  <span className="csv-icon">📄</span>
+                  <strong className="csv-name" title={f.filename}>
+                    {f.filename}
+                  </strong>
+                </div>
+                <div className="csv-file-meta">
+                  <span>Size: {formatBytes(f.sizeBytes)}</span>
+                  <span>{f.rowCount.toLocaleString()} flows</span>
                 </div>
               </div>
             ))}
@@ -285,91 +709,60 @@ export default function Reports() {
         )}
       </div>
 
+      {/* Recent Intrusion Incidents Table in Report */}
       <div className="reports-panel">
         <div className="reports-panel-header">
           <div>
-            <h2>Recent Traffic Records</h2>
-            <p>Latest backend traffic entries and AI-NIDS predictions.</p>
+            <h3>Audit Incident Log</h3>
+            <p>Recent intrusion alerts flagged by the detection engine</p>
           </div>
+          <span className="panel-badge">{filteredAlerts.length} Alerts in Scope</span>
         </div>
 
-        {loading ? (
-          <div className="reports-empty">Loading recent traffic...</div>
-        ) : recentTraffic.length === 0 ? (
-          <div className="reports-empty">No recent traffic found.</div>
+        {filteredAlerts.length === 0 ? (
+          <div className="reports-empty">No incident alerts within the selected timeframe.</div>
         ) : (
           <div className="reports-table-wrapper">
-            <table className="reports-table">
+            <table className="reports-audit-table">
               <thead>
                 <tr>
-                  <th>Time</th>
-                  <th>Source</th>
-                  <th>Destination</th>
-                  <th>Protocol</th>
-                  <th>Prediction</th>
-                  <th>Confidence</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {recentTraffic.map((item) => {
-                  const prediction = getPrediction(item);
-
-                  return (
-                    <tr key={item._id}>
-                      <td>{formatDate(getTrafficDate(item))}</td>
-                      <td>{item.srcIP || "-"}</td>
-                      <td>{item.dstIP || "-"}</td>
-                      <td>{item.protocol || "-"}</td>
-                      <td className={isNormalTraffic(prediction) ? "report-normal" : "report-attack"}>{prediction}</td>
-                      <td>{formatConfidence(item.confidence)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="reports-panel">
-        <div className="reports-panel-header">
-          <div>
-            <h2>Recent Alert Records</h2>
-            <p>Alerts generated from detected attack traffic.</p>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="reports-empty">Loading alert records...</div>
-        ) : recentAlerts.length === 0 ? (
-          <div className="reports-empty">No alert records found.</div>
-        ) : (
-          <div className="reports-table-wrapper">
-            <table className="reports-table">
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Attack Type</th>
+                  <th>Timestamp</th>
+                  <th>Attack Signature</th>
                   <th>Severity</th>
                   <th>Status</th>
+                  <th className="no-print">Inspection</th>
                 </tr>
               </thead>
-
               <tbody>
-                {recentAlerts.map((alert) => (
-                  <tr key={alert._id}>
-                    <td>{formatDate(getAlertDate(alert))}</td>
-                    <td className="report-attack">{alert.attackType || "Unknown"}</td>
+                {filteredAlerts.slice(0, 15).map((a) => (
+                  <tr key={a._id}>
                     <td>
-                      <span className={`report-badge report-severity-${(alert.severity || "Low").toLowerCase()}`}>
-                        {alert.severity || "Low"}
+                      {a.time
+                        ? new Date(a.time).toLocaleString()
+                        : a.createdAt
+                        ? new Date(a.createdAt).toLocaleString()
+                        : "-"}
+                    </td>
+                    <td>
+                      <strong className="attack-label">{a.attackType}</strong>
+                    </td>
+                    <td>
+                      <span className={`rep-badge rep-sev-${a.severity.toLowerCase()}`}>
+                        {a.severity}
                       </span>
                     </td>
                     <td>
-                      <span className={`report-badge report-status-${(alert.status || "Unread").toLowerCase()}`}>
-                        {alert.status || "Unread"}
+                      <span className={`rep-badge rep-stat-${a.status.toLowerCase()}`}>
+                        {a.status}
                       </span>
+                    </td>
+                    <td className="no-print">
+                      <button
+                        className="table-action-link"
+                        onClick={() => navigate(`/incident/${a._id}`)}
+                      >
+                        Inspect Dossier →
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -377,16 +770,6 @@ export default function Reports() {
             </table>
           </div>
         )}
-      </div>
-
-      <div className="reports-actions">
-        <button className="reports-primary-button" onClick={loadReports} disabled={loading}>
-          Generate Current Report
-        </button>
-
-        <button className="reports-secondary-button" onClick={() => window.print()}>
-          Export / Print
-        </button>
       </div>
     </div>
   );
