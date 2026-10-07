@@ -1,3 +1,12 @@
+# ============================================================
+# SCRIPT: check_model.py
+# PURPOSE: Validates model artifact health and file integrity.
+#          Checks whether models/scaler.pkl, cnn1d_binary.pth,
+#          cnn1d_attacks_only.pth, and label_encoder_attacks.pkl
+#          exist, loads them, and verifies feature/class counts.
+# OUTPUT: Output log saved in check_model.txt
+# ============================================================
+
 import pickle
 import os
 
@@ -142,3 +151,4 @@ print()
 print("=" * 70)
 print("CHECK COMPLETE")
 print("=" * 70)
+

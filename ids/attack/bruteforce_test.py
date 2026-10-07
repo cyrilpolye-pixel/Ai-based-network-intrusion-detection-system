@@ -4,7 +4,9 @@
 import requests
 import time
 
-PC_IP = "172.27.150.31"
+PC_IP = "172.16.12.190"
+#TARGET_IP = "192.168.43.31"
+
 PORT = 8080
 
 URL = f"http://{PC_IP}:{PORT}/login"

@@ -1,3 +1,13 @@
+# ============================================================
+# SCRIPT: predict_test.py
+# PURPOSE: Offline local prediction test without Flask API.
+#          Defines CNN1D_Binary and CNN1D_Attack architectures,
+#          loads weights directly via PyTorch, scales input features
+#          from the DDoS dataset with joblib scaler, and runs full
+#          binary and multi-class inference on test flows.
+# OUTPUT: Output log saved in predict_test.txt
+# ============================================================
+
 import numpy as np
 import pandas as pd
 import torch

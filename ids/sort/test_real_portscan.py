@@ -1,3 +1,13 @@
+# ============================================================
+# SCRIPT: test_real_portscan.py
+# PURPOSE: Sends individual PortScan flow records from
+#          data/Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv
+#          to the live ML API (http://127.0.0.1:5001/predict) to test
+#          how the CNN classifies single isolated scan flows (demonstrates
+#          why multi-flow behavioral detection in flow_cat.py is essential).
+# OUTPUT: Output log saved in test_real_portscan.txt
+# ============================================================
+
 import pandas as pd
 import requests
 

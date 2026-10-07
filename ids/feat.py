@@ -225,6 +225,9 @@ def calculate_features(flow):
             ):
                 fwd_packets.append(pkt)
 
+            elif flow["protocol"] == "ICMP" and pkt.haslayer("ICMP"):
+                fwd_packets.append(pkt)
+
         else:
             bwd_packets.append(pkt)
 

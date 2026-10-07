@@ -1,3 +1,13 @@
+# ============================================================
+# SCRIPT: peek_portscan1.py
+# PURPOSE: Extracts sample rows from the CICIDS2017 PortScan dataset
+#          (data/Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv),
+#          verifies the 78 features, and sends them to the Flask
+#          prediction API (http://127.0.0.1:5001/predict) to evaluate
+#          the CNN model's predictions on known PortScan flows.
+# OUTPUT: Output log saved in peek_portscan1.txt
+# ============================================================
+
 import pandas as pd
 import requests
 import time

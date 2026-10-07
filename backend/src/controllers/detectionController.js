@@ -5,13 +5,26 @@ const { getIO } = require("../socket/socket");
 // Helper to determine severity based on attack type
 const getSeverity = (attackType = "") => {
   const type = String(attackType).toLowerCase();
-  if (type.includes("ddos") || type.includes("dos hulk") || type.includes("botnet")) {
+  if (
+    type.includes("ddos") ||
+    type.includes("dos hulk") ||
+    type.includes("botnet") ||
+    type.includes("tcp connection flood") ||
+    type.includes("syn flood") ||
+    type.includes("udp flood")
+  ) {
     return "Critical";
   }
-  if (type.includes("portscan") || type.includes("brute") || type.includes("patator")) {
-    return "High";
-  }
-  if (type.includes("dos") || type.includes("slowloris") || type.includes("goldeneye")) {
+  if (
+    type.includes("portscan") ||
+    type.includes("brute") ||
+    type.includes("patator") ||
+    type.includes("dos") ||
+    type.includes("http dos") ||
+    type.includes("slowloris") ||
+    type.includes("goldeneye") ||
+    type.includes("icmp flood")
+  ) {
     return "High";
   }
   return "Medium";
@@ -24,6 +37,100 @@ const checkIsAttack = (label = "", prediction = "", isAttackFlag = false) => {
   const l = String(label || "").trim().toLowerCase();
   const nonAttacks = new Set(["benign", "normal", "unknown", "pending", ""]);
   return !nonAttacks.has(p) || !nonAttacks.has(l);
+};
+
+// Generic Behavioral Attack Ingestion (BruteForce, HTTP DoS, Floods, etc.)
+const receiveAttack = async (req, res) => {
+  try {
+    const {
+      source_ip,
+      target_ip,
+      attack_type,
+      protocol,
+      target_port,
+      source_port,
+      packet_count,
+      bytes,
+      duration,
+      details,
+      timestamp,
+    } = req.body;
+
+    if (!source_ip || !target_ip) {
+      return res.status(400).json({
+        success: false,
+        message: "source_ip and target_ip are required.",
+      });
+    }
+
+    const type = attack_type || "Behavioral Attack";
+    const flowDate = timestamp ? new Date(timestamp) : new Date();
+
+    const traffic = await TrafficLog.create({
+      timestamp: flowDate,
+      srcIP: source_ip,
+      dstIP: target_ip,
+      protocol: protocol || "TCP",
+      srcPort: Number(source_port || 0),
+      dstPort: Number(target_port || 0),
+      duration: Number(duration || 0),
+      bytes: Number(bytes || 0),
+      packets: Number(packet_count || 1),
+      label: type,
+      prediction: type,
+      confidence: 1.0,
+    });
+
+    const alert = await Alert.create({
+      trafficLogId: traffic._id,
+      attackType: type,
+      severity: getSeverity(type),
+      status: "Unread",
+      time: flowDate,
+    });
+
+    try {
+      const io = getIO();
+      io.emit("traffic-update", traffic);
+      io.emit("alert-created", alert);
+      io.emit("dashboard-update", { type: "attack", traffic, alert });
+      io.emit("live-traffic", {
+        source_ip,
+        target_ip,
+        source_port: Number(source_port || 0),
+        target_port: Number(target_port || 0),
+        protocol: protocol || "TCP",
+        timestamp: flowDate.toISOString(),
+        duration: Number(duration || 0),
+        bytes: Number(bytes || 0),
+        packets: Number(packet_count || 1),
+        label: type,
+        prediction: type,
+        attack_type: type,
+        is_attack: true,
+        confidence: 1.0,
+        detection_method: "Behavioral Detection",
+        details: details || "",
+        _id: traffic._id,
+      });
+    } catch (socketErr) {
+      console.error("Socket error in receiveAttack:", socketErr.message);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: `${type} detection stored successfully.`,
+      traffic,
+      alert,
+    });
+  } catch (error) {
+    console.error("Attack ingestion error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to store attack detection.",
+      error: error.message,
+    });
+  }
 };
 
 const receivePortScan = async (req, res) => {
@@ -338,6 +445,7 @@ const receiveLiveFlow = async (req, res) => {
 };
 
 module.exports = {
+  receiveAttack,
   receivePortScan,
   receiveFlow,
   receiveLiveFlow,
