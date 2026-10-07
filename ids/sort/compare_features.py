@@ -1,3 +1,12 @@
+# ============================================================
+# SCRIPT: compare_features.py
+# PURPOSE: Inspects feature column names and formatting in the
+#          CICIDS2017 DDoS dataset (Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv)
+#          and verifies them against the 78 features used by the
+#          pretrained 1D-CNN model.
+# OUTPUT: Output log saved in compare_feature.txt
+# ============================================================
+
 import pandas as pd
 
 CSV_FILE = "data/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv"
@@ -28,3 +37,5 @@ for column in df.columns[70:78]:
 print("\n" + "=" * 80)
 print("CHECK COMPLETE")
 print("=" * 80)
+
+

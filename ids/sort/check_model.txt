@@ -1,0 +1,26 @@
+
+
+#(.venv) PS C:\Users\anna\projects\ainids\ids\sort> python check_model.py
+#======================================================================
+#MODEL FILE CHECK
+#======================================================================
+
+#Scaler:
+#models\scaler.pkl
+#Exists: True
+#Size: 2455 bytes
+
+#SCALER ERROR:
+#UnpicklingError("invalid load key, '\\x0a'.")
+
+#======================================================================
+#BINARY MODEL
+#======================================================================
+#Exists: True
+#Size: 900418 bytes
+#Binary model loaded successfully.
+#Object type: <class 'collections.OrderedDict'>
+
+#======================================================================
+#CHECK COMPLETE
+#======================================================================

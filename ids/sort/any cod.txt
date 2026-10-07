@@ -1,0 +1,13 @@
+# ============================================================
+# QUICK MODEL INSPECTION ONE-LINERS
+# ============================================================
+# Useful command snippets for fast one-liner checks of model files.
+
+# 1. Check Scaler feature count and type:
+python -c "import joblib; s=joblib.load('models/scaler.pkl'); print(type(s)); print('features:', s.n_features_in_)"
+
+# 2. Check Attack Model weights dictionary:
+python -c "import torch; x=torch.load('models/cnn1d_attacks_only.pth', weights_only=True); print(type(x)); print('keys:', len(x))"
+
+# 3. Check Attack Model weights with explicit CPU mapping:
+python -c "import torch; x=torch.load('models/cnn1d_attacks_only.pth', map_location='cpu', weights_only=True); print(type(x)); print('keys:', len(x))"

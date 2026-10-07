@@ -1,3 +1,12 @@
+# ============================================================
+# SCRIPT: test_model.py
+# PURPOSE: Defines the exact 1D-CNN architectures (CNN1D_Binary and
+#          CNN1D_Attack) matching the saved checkpoints. Loads scaler,
+#          label encoder, and model weights to verify complete
+#          architecture compatibility and load status on CPU.
+# OUTPUT: Output log saved in test_model.txt
+# ============================================================
+
 import torch
 import torch.nn as nn
 import joblib

@@ -2,6 +2,8 @@
 # AI-NIDS LIVE NETWORK CAPTURE
 # ============================================================
 
+import os
+import sys
 import threading
 import time
 from datetime import datetime
@@ -15,6 +17,8 @@ from scapy.all import (
     IP,
     TCP,
     UDP,
+    ICMP,
+    Raw,
     get_if_list,
     get_if_addr,
 )
@@ -31,11 +35,23 @@ from capture_config import (
     OUTPUT_FILE,
     PORTSCAN_PORT_THRESHOLD,
     PORTSCAN_WINDOW,
+    BRUTEFORCE_THRESHOLD,
+    BRUTEFORCE_WINDOW,
+    AUTH_SERVICE_PORTS,
+    HTTP_DOS_THRESHOLD,
+    HTTP_DOS_WINDOW,
+    HTTP_PORTS,
+    TCP_SYN_FLOOD_THRESHOLD,
+    TCP_SYN_FLOOD_WINDOW,
+    UDP_FLOOD_THRESHOLD,
+    UDP_FLOOD_WINDOW,
+    ICMP_FLOOD_THRESHOLD,
+    ICMP_FLOOD_WINDOW,
 )
 
+BACKEND_ATTACK_URL = "http://127.0.0.1:5000/api/detections/attack"
 BACKEND_DETECTION_URL = "http://127.0.0.1:5000/api/detections/portscan"
 BACKEND_FLOW_URL = "http://127.0.0.1:5000/api/detections/live-flow"
-#BACKEND_FLOW_URL = "http://127.0.0.1:5000/api/detections/flow"
 
 
 
@@ -100,540 +116,529 @@ lock = threading.Lock()
 
 
 # ============================================================
-# PORTSCAN DETECTION CONFIGURATION
+# BEHAVIORAL ATTACK TRACKING & DETECTION
 # ============================================================
 
-# Number of DIFFERENT destination ports contacted by the
-# same source against the same target within PORTSCAN_WINDOW
-# before declaring a PortScan.
-#
-# Example:
-#
-# PC2 -> PC1:1
-# PC2 -> PC1:2
-# PC2 -> PC1:3
-# ...
-# PC2 -> PC1:10
-#
-# => PortScan
-#
-
-
-# Time period in which the distinct ports are counted.
-#
-# 5 seconds is suitable for the current controlled test.
-#
-
-# ============================================================
-# PORTSCAN TRACKING
-# ============================================================
-
-# Structure:
-#
-# portscan_tracker = {
-#
-#     source_ip: {
-#
-#         target_ip: {
-#
-#             destination_port: timestamp,
-#             ...
-#
-#         }
-#     }
-# }
-#
+# 1. PortScan Tracking
 portscan_tracker = {}
-
-
-# Stores currently detected scans.
-#
-# Structure:
-#
-# {
-#     (source_ip, target_ip): {
-#         "detected_at": timestamp,
-#         "ports": set(...)
-#     }
-# }
-#
 active_portscans = {}
-
-
 portscan_lock = threading.Lock()
 
+# 2. BruteForce Tracking
+bruteforce_tracker = {}
+active_bruteforce = {}
+bruteforce_lock = threading.Lock()
 
-# ============================================================
-# PORTSCAN DETECTION
-# ============================================================
+# 3. HTTP DoS Tracking
+http_dos_tracker = {}
+active_http_dos = {}
+http_dos_lock = threading.Lock()
 
+# 4. TCP Connection Flood Tracking
+tcp_flood_tracker = {}
+active_tcp_floods = {}
+tcp_flood_lock = threading.Lock()
+
+# 5. UDP Flood Tracking
+udp_flood_tracker = {}
+active_udp_floods = {}
+udp_flood_lock = threading.Lock()
+
+# 6. ICMP Flood Tracking
+icmp_flood_tracker = {}
+active_icmp_floods = {}
+icmp_flood_lock = threading.Lock()
+
+
+# ------------------------------------------------------------
+# 1. PORTSCAN DETECTION (Multi-port SYN scanning)
+# ------------------------------------------------------------
 def detect_portscan(packet):
-    """
-    Detect TCP SYN-based PortScan behavior.
-
-    A PortScan is detected when one source sends TCP SYN
-    packets to many different destination ports on our PC
-    within a short time window.
-
-    This is a behavioral detector.
-
-    It complements the CNN rather than modifying it.
-    """
-
-    # --------------------------------------------------------
-    # Must be IPv4
-    # --------------------------------------------------------
-
-    if not packet.haslayer(IP):
-
+    if not packet.haslayer(IP) or not packet.haslayer(TCP):
         return None
-
-
-    # --------------------------------------------------------
-    # Current PortScan detector uses TCP SYN traffic
-    # --------------------------------------------------------
-
-    if not packet.haslayer(TCP):
-
-        return None
-
 
     ip = packet[IP]
-
     tcp = packet[TCP]
 
-
-    # --------------------------------------------------------
-    # Traffic must be targeting our PC
-    # --------------------------------------------------------
-
-    if ip.dst != PC_IP:
-
+    if ip.dst != PC_IP or ip.src == PC_IP:
         return None
-
-
-    # --------------------------------------------------------
-    # Do not treat our own PC as attacker
-    # --------------------------------------------------------
-
-    if ip.src == PC_IP:
-
-        return None
-
-
-    # --------------------------------------------------------
-    # TCP flags
-    #
-    # SYN = 0x02
-    # ACK = 0x10
-    #
-    # We want initial SYN packets:
-    #
-    # SYN = 1
-    # ACK = 0
-    # --------------------------------------------------------
 
     flags = int(tcp.flags)
-
     syn_flag = bool(flags & 0x02)
-
     ack_flag = bool(flags & 0x10)
 
-
-    if not syn_flag:
-
+    if not syn_flag or ack_flag:
         return None
-
-
-    if ack_flag:
-
-        return None
-
-
-    # --------------------------------------------------------
-    # Source / target
-    # --------------------------------------------------------
 
     source_ip = ip.src
-
     target_ip = ip.dst
-
-
-    destination_port = int(
-        tcp.dport
-    )
-
-
-    # --------------------------------------------------------
-    # Ignore configured service ports
-    # --------------------------------------------------------
+    destination_port = int(tcp.dport)
 
     if destination_port in IGNORED_PORTS:
-
         return None
-
 
     now = time.time()
 
-
     with portscan_lock:
-
-        # ----------------------------------------------------
-        # Create source entry
-        # ----------------------------------------------------
-
         if source_ip not in portscan_tracker:
-
             portscan_tracker[source_ip] = {}
-
-
-        # ----------------------------------------------------
-        # Create target entry
-        # ----------------------------------------------------
-
         if target_ip not in portscan_tracker[source_ip]:
-
             portscan_tracker[source_ip][target_ip] = {}
 
+        port_data = portscan_tracker[source_ip][target_ip]
 
-        port_data = (
-            portscan_tracker[source_ip][target_ip]
-        )
-
-
-        # ----------------------------------------------------
-        # Remove ports outside detection window
-        # ----------------------------------------------------
-
-        expired_ports = []
-
-        for port, timestamp in port_data.items():
-
-            if (
-                now - timestamp
-                > PORTSCAN_WINDOW
-            ):
-
-                expired_ports.append(
-                    port
-                )
-
-
-        for port in expired_ports:
-
-            del port_data[port]
-
-
-        # ----------------------------------------------------
-        # Record this destination port
-        # ----------------------------------------------------
+        # Evict expired
+        expired = [p for p, ts in port_data.items() if now - ts > PORTSCAN_WINDOW]
+        for p in expired:
+            del port_data[p]
 
         port_data[destination_port] = now
+        distinct_ports = len(port_data)
 
-
-        # ----------------------------------------------------
-        # Count distinct destination ports
-        # ----------------------------------------------------
-
-        distinct_ports = len(
-            port_data
-        )
-
-
-        # ----------------------------------------------------
-        # Check PortScan threshold
-        # ----------------------------------------------------
-
-        if (
-            distinct_ports
-            >= PORTSCAN_PORT_THRESHOLD
-        ):
-
-            scan_key = (
-                source_ip,
-                target_ip
-            )
-
-
-            # ------------------------------------------------
-            # New PortScan
-            # ------------------------------------------------
-
+        if distinct_ports >= PORTSCAN_PORT_THRESHOLD:
+            scan_key = (source_ip, target_ip)
             if scan_key not in active_portscans:
-
                 active_portscans[scan_key] = {
-
-                    "detected_at":
-                        now,
-
-                    "ports":
-                        set(
-                            port_data.keys()
-                        ),
+                    "detected_at": now,
+                    "ports": set(port_data.keys()),
                 }
-
-
                 return {
-
-                    "source_ip":
-                        source_ip,
-
-                    "target_ip":
-                        target_ip,
-
-                    "port_count":
-                        distinct_ports,
-
-                    "ports":
-                        sorted(
-                            port_data.keys()
-                        ),
-
-                    "timestamp":
-                        datetime.now(),
+                    "source_ip": source_ip,
+                    "target_ip": target_ip,
+                    "target_port": destination_port,
+                    "port_count": distinct_ports,
+                    "ports": sorted(port_data.keys()),
+                    "attack_type": "PortScan",
+                    "timestamp": datetime.now(),
                 }
+            else:
+                active_portscans[scan_key]["ports"].update(port_data.keys())
+
+    return None
 
 
-            # ------------------------------------------------
-            # Existing scan
-            #
-            # Update the known port set, but do not create
-            # another alert every packet.
-            # ------------------------------------------------
+# ------------------------------------------------------------
+# 2. BRUTEFORCE DETECTION (Authentication & service hammering)
+# ------------------------------------------------------------
+def detect_bruteforce(packet):
+    if not packet.haslayer(IP) or not packet.haslayer(TCP):
+        return None
 
-            active_portscans[scan_key][
-                "ports"
-            ].update(
-                port_data.keys()
-            )
+    ip = packet[IP]
+    tcp = packet[TCP]
 
+    if ip.dst != PC_IP or ip.src == PC_IP:
+        return None
+
+    dport = int(tcp.dport)
+    is_auth_port = dport in AUTH_SERVICE_PORTS
+    has_login_payload = False
+
+    if packet.haslayer(Raw):
+        try:
+            payload = bytes(packet[Raw].load).lower()
+            if b"post " in payload or b"/login" in payload or b"password" in payload or b"auth" in payload:
+                has_login_payload = True
+        except Exception:
+            pass
+
+    flags = int(tcp.flags)
+    is_syn = bool(flags & 0x02) and not bool(flags & 0x10)
+
+    # Must be either SYN to auth port or HTTP payload with auth keywords
+    if not (is_auth_port and is_syn) and not has_login_payload:
+        return None
+
+    now = time.time()
+    source_ip = ip.src
+    key = (source_ip, dport)
+
+    with bruteforce_lock:
+        if key not in bruteforce_tracker:
+            bruteforce_tracker[key] = []
+
+        # Evict expired
+        bruteforce_tracker[key] = [t for t in bruteforce_tracker[key] if now - t <= BRUTEFORCE_WINDOW]
+        bruteforce_tracker[key].append(now)
+        attempts = len(bruteforce_tracker[key])
+
+        if attempts >= BRUTEFORCE_THRESHOLD:
+            if key not in active_bruteforce or (now - active_bruteforce[key]["detected_at"] > BRUTEFORCE_WINDOW):
+                active_bruteforce[key] = {
+                    "detected_at": now,
+                    "attempts": attempts,
+                }
+                return {
+                    "source_ip": source_ip,
+                    "target_ip": ip.dst,
+                    "target_port": dport,
+                    "protocol": "TCP",
+                    "attempt_count": attempts,
+                    "attack_type": "BruteForce",
+                    "details": f"High frequency authentication attempts targeting port {dport} ({attempts} attempts in {BRUTEFORCE_WINDOW}s)",
+                    "timestamp": datetime.now(),
+                }
+            else:
+                active_bruteforce[key]["attempts"] = attempts
+
+    return None
+
+
+# ------------------------------------------------------------
+# 3. HTTP DoS DETECTION (Hulk / Slowloris / HTTP Flood)
+# ------------------------------------------------------------
+def detect_http_dos(packet):
+    if not packet.haslayer(IP) or not packet.haslayer(TCP):
+        return None
+
+    ip = packet[IP]
+    tcp = packet[TCP]
+
+    if ip.dst != PC_IP or ip.src == PC_IP:
+        return None
+
+    dport = int(tcp.dport)
+    if dport not in HTTP_PORTS and dport not in {80, 443, 8080, 5000, 3000}:
+        return None
+
+    has_http_req = False
+    if packet.haslayer(Raw):
+        try:
+            payload = bytes(packet[Raw].load)
+            if payload.startswith(b"GET ") or payload.startswith(b"POST ") or payload.startswith(b"HEAD "):
+                has_http_req = True
+        except Exception:
+            pass
+
+    flags = int(tcp.flags)
+    is_syn = bool(flags & 0x02) and not bool(flags & 0x10)
+
+    if not has_http_req and not is_syn:
+        return None
+
+    now = time.time()
+    source_ip = ip.src
+
+    with http_dos_lock:
+        if source_ip not in http_dos_tracker:
+            http_dos_tracker[source_ip] = []
+
+        http_dos_tracker[source_ip] = [t for t in http_dos_tracker[source_ip] if now - t <= HTTP_DOS_WINDOW]
+        http_dos_tracker[source_ip].append(now)
+        req_count = len(http_dos_tracker[source_ip])
+
+        if req_count >= HTTP_DOS_THRESHOLD:
+            if source_ip not in active_http_dos or (now - active_http_dos[source_ip]["detected_at"] > HTTP_DOS_WINDOW):
+                active_http_dos[source_ip] = {
+                    "detected_at": now,
+                    "count": req_count,
+                }
+                return {
+                    "source_ip": source_ip,
+                    "target_ip": ip.dst,
+                    "target_port": dport,
+                    "protocol": "TCP",
+                    "request_count": req_count,
+                    "attack_type": "HTTP DoS",
+                    "details": f"High volume HTTP request burst targeting port {dport} ({req_count} requests in {HTTP_DOS_WINDOW}s)",
+                    "timestamp": datetime.now(),
+                }
+            else:
+                active_http_dos[source_ip]["count"] = req_count
+
+    return None
+
+
+# ------------------------------------------------------------
+# 4. TCP CONNECTION FLOOD (SYN flood targeting single port)
+# ------------------------------------------------------------
+def detect_tcp_flood(packet):
+    if not packet.haslayer(IP) or not packet.haslayer(TCP):
+        return None
+
+    ip = packet[IP]
+    tcp = packet[TCP]
+
+    if ip.dst != PC_IP or ip.src == PC_IP:
+        return None
+
+    flags = int(tcp.flags)
+    syn_flag = bool(flags & 0x02)
+    ack_flag = bool(flags & 0x10)
+
+    if not syn_flag or ack_flag:
+        return None
+
+    dport = int(tcp.dport)
+    now = time.time()
+    key = (ip.src, dport)
+
+    with tcp_flood_lock:
+        if key not in tcp_flood_tracker:
+            tcp_flood_tracker[key] = []
+
+        tcp_flood_tracker[key] = [t for t in tcp_flood_tracker[key] if now - t <= TCP_SYN_FLOOD_WINDOW]
+        tcp_flood_tracker[key].append(now)
+        syn_count = len(tcp_flood_tracker[key])
+
+        if syn_count >= TCP_SYN_FLOOD_THRESHOLD:
+            if key not in active_tcp_floods or (now - active_tcp_floods[key]["detected_at"] > TCP_SYN_FLOOD_WINDOW):
+                active_tcp_floods[key] = {
+                    "detected_at": now,
+                    "count": syn_count,
+                }
+                return {
+                    "source_ip": ip.src,
+                    "target_ip": ip.dst,
+                    "target_port": dport,
+                    "protocol": "TCP",
+                    "packet_count": syn_count,
+                    "attack_type": "TCP Connection Flood",
+                    "details": f"Volumetric TCP SYN flood targeting port {dport} ({syn_count} SYNs in {TCP_SYN_FLOOD_WINDOW}s)",
+                    "timestamp": datetime.now(),
+                }
+            else:
+                active_tcp_floods[key]["count"] = syn_count
+
+    return None
+
+
+# ------------------------------------------------------------
+# 5. UDP FLOOD DETECTION
+# ------------------------------------------------------------
+def detect_udp_flood(packet):
+    if not packet.haslayer(IP) or not packet.haslayer(UDP):
+        return None
+
+    ip = packet[IP]
+    if ip.dst != PC_IP or ip.src == PC_IP:
+        return None
+
+    now = time.time()
+    source_ip = ip.src
+    dport = int(packet[UDP].dport)
+
+    with udp_flood_lock:
+        if source_ip not in udp_flood_tracker:
+            udp_flood_tracker[source_ip] = []
+
+        udp_flood_tracker[source_ip] = [t for t in udp_flood_tracker[source_ip] if now - t <= UDP_FLOOD_WINDOW]
+        udp_flood_tracker[source_ip].append(now)
+        udp_count = len(udp_flood_tracker[source_ip])
+
+        if udp_count >= UDP_FLOOD_THRESHOLD:
+            if source_ip not in active_udp_floods or (now - active_udp_floods[source_ip]["detected_at"] > UDP_FLOOD_WINDOW):
+                active_udp_floods[source_ip] = {
+                    "detected_at": now,
+                    "count": udp_count,
+                }
+                return {
+                    "source_ip": source_ip,
+                    "target_ip": ip.dst,
+                    "target_port": dport,
+                    "protocol": "UDP",
+                    "packet_count": udp_count,
+                    "attack_type": "UDP Flood",
+                    "details": f"Volumetric UDP packet flood ({udp_count} datagrams in {UDP_FLOOD_WINDOW}s)",
+                    "timestamp": datetime.now(),
+                }
+            else:
+                active_udp_floods[source_ip]["count"] = udp_count
+
+    return None
+
+
+# ------------------------------------------------------------
+# 6. ICMP FLOOD DETECTION (Ping Flood)
+# ------------------------------------------------------------
+def detect_icmp_flood(packet):
+    if not packet.haslayer(IP) or not packet.haslayer(ICMP):
+        return None
+
+    ip = packet[IP]
+    icmp = packet[ICMP]
+
+    if ip.dst != PC_IP or ip.src == PC_IP:
+        return None
+
+    # Echo Request is type 8
+    if int(icmp.type) != 8:
+        return None
+
+    now = time.time()
+    source_ip = ip.src
+
+    with icmp_flood_lock:
+        if source_ip not in icmp_flood_tracker:
+            icmp_flood_tracker[source_ip] = []
+
+        icmp_flood_tracker[source_ip] = [t for t in icmp_flood_tracker[source_ip] if now - t <= ICMP_FLOOD_WINDOW]
+        icmp_flood_tracker[source_ip].append(now)
+        icmp_count = len(icmp_flood_tracker[source_ip])
+
+        if icmp_count >= ICMP_FLOOD_THRESHOLD:
+            if source_ip not in active_icmp_floods or (now - active_icmp_floods[source_ip]["detected_at"] > ICMP_FLOOD_WINDOW):
+                active_icmp_floods[source_ip] = {
+                    "detected_at": now,
+                    "count": icmp_count,
+                }
+                return {
+                    "source_ip": source_ip,
+                    "target_ip": ip.dst,
+                    "target_port": 0,
+                    "protocol": "ICMP",
+                    "packet_count": icmp_count,
+                    "attack_type": "ICMP Flood",
+                    "details": f"High rate ICMP Echo Request ping flood ({icmp_count} packets in {ICMP_FLOOD_WINDOW}s)",
+                    "timestamp": datetime.now(),
+                }
+            else:
+                active_icmp_floods[source_ip]["count"] = icmp_count
 
     return None
 
 
 # ============================================================
-# PORTSCAN CLEANUP
+# BEHAVIORAL ATTACK CLEANUP WORKER
 # ============================================================
-
-def cleanup_portscan_tracker():
-
-    """
-    Remove old PortScan tracking information.
-
-    This prevents the dictionaries from growing forever
-    during long-running monitoring.
-    """
-
+def cleanup_behavioral_trackers():
     while not stop_event.is_set():
-
         time.sleep(1)
-
-
         now = time.time()
 
-
+        # 1. PortScan cleanup
         with portscan_lock:
-
-            # ------------------------------------------------
-            # Clean individual tracked ports
-            # ------------------------------------------------
-
-            for source_ip in list(
-                portscan_tracker.keys()
-            ):
-
-                targets = (
-                    portscan_tracker[
-                        source_ip
-                    ]
-                )
-
-
-                for target_ip in list(
-                    targets.keys()
-                ):
-
-                    port_data = (
-                        targets[
-                            target_ip
-                        ]
-                    )
-
-
-                    expired_ports = []
-
-                    for port, timestamp in (
-                        list(
-                            port_data.items()
-                        )
-                    ):
-
-                        if (
-                            now - timestamp
-                            > PORTSCAN_WINDOW
-                        ):
-
-                            expired_ports.append(
-                                port
-                            )
-
-
-                    for port in expired_ports:
-
-                        del port_data[port]
-
-
+            for s_ip in list(portscan_tracker.keys()):
+                targets = portscan_tracker[s_ip]
+                for t_ip in list(targets.keys()):
+                    port_data = targets[t_ip]
+                    exp = [p for p, ts in port_data.items() if now - ts > PORTSCAN_WINDOW]
+                    for p in exp:
+                        del port_data[p]
                     if not port_data:
-
-                        del targets[
-                            target_ip
-                        ]
-
-
+                        del targets[t_ip]
                 if not targets:
+                    del portscan_tracker[s_ip]
+            exp_scans = [k for k, v in active_portscans.items() if now - v["detected_at"] > PORTSCAN_WINDOW]
+            for k in exp_scans:
+                del active_portscans[k]
 
-                    del portscan_tracker[
-                        source_ip
-                    ]
+        # 2. BruteForce cleanup
+        with bruteforce_lock:
+            for k in list(bruteforce_tracker.keys()):
+                bruteforce_tracker[k] = [t for t in bruteforce_tracker[k] if now - t <= BRUTEFORCE_WINDOW]
+                if not bruteforce_tracker[k]:
+                    del bruteforce_tracker[k]
+            exp_bf = [k for k, v in active_bruteforce.items() if now - v["detected_at"] > BRUTEFORCE_WINDOW]
+            for k in exp_bf:
+                del active_bruteforce[k]
 
+        # 3. HTTP DoS cleanup
+        with http_dos_lock:
+            for ip_key in list(http_dos_tracker.keys()):
+                http_dos_tracker[ip_key] = [t for t in http_dos_tracker[ip_key] if now - t <= HTTP_DOS_WINDOW]
+                if not http_dos_tracker[ip_key]:
+                    del http_dos_tracker[ip_key]
+            exp_hd = [k for k, v in active_http_dos.items() if now - v["detected_at"] > HTTP_DOS_WINDOW]
+            for k in exp_hd:
+                del active_http_dos[k]
 
-            # ------------------------------------------------
-            # Clean active scan states
-            # ------------------------------------------------
+        # 4. TCP Flood cleanup
+        with tcp_flood_lock:
+            for k in list(tcp_flood_tracker.keys()):
+                tcp_flood_tracker[k] = [t for t in tcp_flood_tracker[k] if now - t <= TCP_SYN_FLOOD_WINDOW]
+                if not tcp_flood_tracker[k]:
+                    del tcp_flood_tracker[k]
+            exp_tf = [k for k, v in active_tcp_floods.items() if now - v["detected_at"] > TCP_SYN_FLOOD_WINDOW]
+            for k in exp_tf:
+                del active_tcp_floods[k]
 
-            expired_scans = []
+        # 5. UDP Flood cleanup
+        with udp_flood_lock:
+            for k in list(udp_flood_tracker.keys()):
+                udp_flood_tracker[k] = [t for t in udp_flood_tracker[k] if now - t <= UDP_FLOOD_WINDOW]
+                if not udp_flood_tracker[k]:
+                    del udp_flood_tracker[k]
+            exp_uf = [k for k, v in active_udp_floods.items() if now - v["detected_at"] > UDP_FLOOD_WINDOW]
+            for k in exp_uf:
+                del active_udp_floods[k]
 
-            for scan_key, scan_data in (
-                active_portscans.items()
-            ):
-
-                if (
-                    now
-                    - scan_data[
-                        "detected_at"
-                    ]
-                    > PORTSCAN_WINDOW
-                ):
-
-                    expired_scans.append(
-                        scan_key
-                    )
-
-
-            for scan_key in expired_scans:
-
-                del active_portscans[
-                    scan_key
-                ]
+        # 6. ICMP Flood cleanup
+        with icmp_flood_lock:
+            for k in list(icmp_flood_tracker.keys()):
+                icmp_flood_tracker[k] = [t for t in icmp_flood_tracker[k] if now - t <= ICMP_FLOOD_WINDOW]
+                if not icmp_flood_tracker[k]:
+                    del icmp_flood_tracker[k]
+            exp_if = [k for k, v in active_icmp_floods.items() if now - v["detected_at"] > ICMP_FLOOD_WINDOW]
+            for k in exp_if:
+                del active_icmp_floods[k]
 
 
 # ============================================================
-# PORTSCAN ACTIVE CHECK
+# ACTIVE BEHAVIORAL ATTACK QUERY
 # ============================================================
-
-def get_active_portscan(
-    source_ip,
-    target_ip
-):
-    """
-    Check whether the source/target pair is currently
-    involved in a detected PortScan.
-    """
-
-    scan_key = (
-        source_ip,
-        target_ip
-    )
-
-
+def get_active_portscan(source_ip, target_ip):
+    scan_key = (source_ip, target_ip)
     now = time.time()
-
-
     with portscan_lock:
-
-        scan = active_portscans.get(
-            scan_key
-        )
-
-
+        scan = active_portscans.get(scan_key)
         if scan is None:
-
             return None
-
-
-        # ----------------------------------------------------
-        # Check expiration
-        # ----------------------------------------------------
-
-        if (
-            now
-            - scan["detected_at"]
-            > PORTSCAN_WINDOW
-        ):
-
-            del active_portscans[
-                scan_key
-            ]
-
+        if now - scan["detected_at"] > PORTSCAN_WINDOW:
+            del active_portscans[scan_key]
             return None
-
-
         return {
-
-            "source_ip":
-                source_ip,
-
-            "target_ip":
-                target_ip,
-
-            "ports":
-                sorted(
-                    scan["ports"]
-                ),
-
-            "port_count":
-                len(
-                    scan["ports"]
-                ),
+            "source_ip": source_ip,
+            "target_ip": target_ip,
+            "ports": sorted(scan["ports"]),
+            "port_count": len(scan["ports"]),
         }
 
+def get_active_behavioral_attack(source_ip, dst_port=None):
+    now = time.time()
+    # 1. PortScan
+    with portscan_lock:
+        for (s, _), data in active_portscans.items():
+            if s == source_ip and (now - data["detected_at"] <= PORTSCAN_WINDOW):
+                return "PortScan"
 
-# ============================================================
-# MARK ACTIVE FLOWS AS PORTSCAN
-# ============================================================
+    # 2. BruteForce
+    with bruteforce_lock:
+        for (s, p), data in active_bruteforce.items():
+            if s == source_ip and (dst_port is None or p == dst_port) and (now - data["detected_at"] <= BRUTEFORCE_WINDOW):
+                return "BruteForce"
 
-def mark_active_flows_as_portscan(
-    source_ip,
-    target_ip
-):
-    """
-    Once a PortScan has been detected, mark all currently
-    stored flows belonging to that source/target pair.
+    # 3. HTTP DoS
+    with http_dos_lock:
+        if source_ip in active_http_dos and (now - active_http_dos[source_ip]["detected_at"] <= HTTP_DOS_WINDOW):
+            return "HTTP DoS"
 
-    This prevents the earlier individual scan flows from
-    remaining completely disconnected from the PortScan
-    detection.
-    """
+    # 4. TCP Connection Flood
+    with tcp_flood_lock:
+        for (s, p), data in active_tcp_floods.items():
+            if s == source_ip and (dst_port is None or p == dst_port) and (now - data["detected_at"] <= TCP_SYN_FLOOD_WINDOW):
+                return "TCP Connection Flood"
 
+    # 5. UDP Flood
+    with udp_flood_lock:
+        if source_ip in active_udp_floods and (now - active_udp_floods[source_ip]["detected_at"] <= UDP_FLOOD_WINDOW):
+            return "UDP Flood"
+
+    # 6. ICMP Flood
+    with icmp_flood_lock:
+        if source_ip in active_icmp_floods and (now - active_icmp_floods[source_ip]["detected_at"] <= ICMP_FLOOD_WINDOW):
+            return "ICMP Flood"
+
+    return None
+
+def mark_active_flows_as_attack(source_ip, attack_type):
     with lock:
-
         for flow in flows.values():
+            if flow["src_ip"] == source_ip:
+                flow["behavioral_detection"] = attack_type
 
-            # ------------------------------------------------
-            # Only traffic from attacker -> defender
-            # ------------------------------------------------
-
-            if (
-                flow["src_ip"]
-                == source_ip
-                and
-                flow["dst_ip"]
-                == target_ip
-            ):
-
-                flow[
-                    "behavioral_detection"
-                ] = "PortScan"
+def mark_active_flows_as_portscan(source_ip, target_ip):
+    mark_active_flows_as_attack(source_ip, "PortScan")
 
 
 # ============================================================
@@ -688,13 +693,27 @@ def clear_output_file():
         )
 
         f.write(
-            f"PortScan Threshold: "
-            f"{PORTSCAN_PORT_THRESHOLD} ports\n"
+            f"PortScan Threshold: {PORTSCAN_PORT_THRESHOLD} ports / {PORTSCAN_WINDOW}s\n"
         )
 
         f.write(
-            f"PortScan Window: "
-            f"{PORTSCAN_WINDOW} seconds\n"
+            f"BruteForce Threshold: {BRUTEFORCE_THRESHOLD} attempts / {BRUTEFORCE_WINDOW}s\n"
+        )
+
+        f.write(
+            f"HTTP DoS Threshold: {HTTP_DOS_THRESHOLD} requests / {HTTP_DOS_WINDOW}s\n"
+        )
+
+        f.write(
+            f"TCP Flood Threshold: {TCP_SYN_FLOOD_THRESHOLD} SYNs / {TCP_SYN_FLOOD_WINDOW}s\n"
+        )
+
+        f.write(
+            f"UDP Flood Threshold: {UDP_FLOOD_THRESHOLD} packets / {UDP_FLOOD_WINDOW}s\n"
+        )
+
+        f.write(
+            f"ICMP Flood Threshold: {ICMP_FLOOD_THRESHOLD} packets / {ICMP_FLOOD_WINDOW}s\n"
         )
 
         f.write(
@@ -748,10 +767,17 @@ def packet_is_useful(packet):
 
 
     # --------------------------------------------------------
+    # ICMP (Ping Flood & ICMP Analysis)
+    # --------------------------------------------------------
+
+    if packet.haslayer(ICMP):
+        return True
+
+    # --------------------------------------------------------
     # TCP
     # --------------------------------------------------------
 
-    if packet.haslayer(TCP):
+    elif packet.haslayer(TCP):
 
         sport = int(
             packet[TCP].sport
@@ -760,7 +786,6 @@ def packet_is_useful(packet):
         dport = int(
             packet[TCP].dport
         )
-
 
     # --------------------------------------------------------
     # UDP
@@ -776,11 +801,9 @@ def packet_is_useful(packet):
             packet[UDP].dport
         )
 
-
     else:
 
         return False
-
 
     # --------------------------------------------------------
     # Ignore unwanted service ports
@@ -794,34 +817,28 @@ def packet_is_useful(packet):
 
         return False
 
-
     # --------------------------------------------------------
     # Controlled PortScan testing
-    #
-    # This means:
-    #
-    # capture all non-ignored ports
-    #
-    # It is NOT the PortScan detector itself.
     # --------------------------------------------------------
 
     if PORTSCAN_TEST_MODE:
 
         return True
 
+    # --------------------------------------------------------
+    # Normal application monitoring mode:
+    # Monitor web ports, authentication services, and configured ports
+    # --------------------------------------------------------
 
-    # --------------------------------------------------------
-    # Normal application monitoring mode
-    # --------------------------------------------------------
+    allowed_ports = MONITORED_PORTS | AUTH_SERVICE_PORTS | HTTP_PORTS
 
     if (
-        sport not in MONITORED_PORTS
+        sport not in allowed_ports
         and
-        dport not in MONITORED_PORTS
+        dport not in allowed_ports
     ):
 
         return False
-
 
     return True
 
@@ -833,7 +850,6 @@ def packet_is_useful(packet):
 def get_flow_information(packet):
 
     ip = packet[IP]
-
 
     # --------------------------------------------------------
     # TCP
@@ -851,7 +867,6 @@ def get_flow_information(packet):
             packet[TCP].dport
         )
 
-
     # --------------------------------------------------------
     # UDP
     # --------------------------------------------------------
@@ -868,6 +883,15 @@ def get_flow_information(packet):
             packet[UDP].dport
         )
 
+    # --------------------------------------------------------
+    # ICMP
+    # --------------------------------------------------------
+
+    elif packet.haslayer(ICMP):
+
+        protocol = "ICMP"
+        sport = 0
+        dport = int(packet[ICMP].type) if hasattr(packet[ICMP], "type") else 0
 
     else:
 
@@ -953,7 +977,7 @@ def send_to_ml(features):
         response = requests.post(
             ML_API_URL,
             json=payload,
-            timeout=10
+            timeout=2
         )
 
 
@@ -1226,74 +1250,37 @@ def process_flow(flow):
 
 
     # --------------------------------------------------------
-    # Check behavioral PortScan detection
+    # Check behavioral detection (PortScan, BruteForce, DoS, Floods)
     # --------------------------------------------------------
 
-    behavioral_detection = (
-        flow.get(
-            "behavioral_detection"
-        )
-    )
-
+    behavioral_detection = flow.get("behavioral_detection")
 
     if behavioral_detection is None:
-
-        active_scan = (
-            get_active_portscan(
-                flow["src_ip"],
-                flow["dst_ip"]
-            )
+        behavioral_detection = get_active_behavioral_attack(
+            flow["src_ip"],
+            flow.get("dst_port")
         )
-
-
-        if active_scan is not None:
-
-            behavioral_detection = (
-                "PortScan"
-            )
-
 
     # --------------------------------------------------------
     # Final detection result
     # --------------------------------------------------------
 
-    if behavioral_detection == "PortScan":
-
+    if behavioral_detection:
         final_detection = {
-
-            "binary_prediction":
-                "ATTACK",
-
-            "attack_type":
-                "PortScan",
-
-            "detection_method":
-                "Behavioral PortScan Detection",
-
-            "port_count":
-                (
-                    len(
-                        get_active_portscan(
-                            flow["src_ip"],
-                            flow["dst_ip"]
-                        )["ports"]
-                    )
-                    if get_active_portscan(
-                        flow["src_ip"],
-                        flow["dst_ip"]
-                    )
-                    else None
-                ),
-
-            "cnn_prediction":
-                prediction,
+            "binary_prediction": "ATTACK",
+            "attack_type": behavioral_detection,
+            "detection_method": f"Behavioral {behavioral_detection} Detection",
+            "confidence": 1.0,
+            "is_attack": True,
+            "cnn_prediction": prediction,
         }
 
-
+        if behavioral_detection == "PortScan":
+            active_scan = get_active_portscan(flow["src_ip"], flow["dst_ip"])
+            if active_scan:
+                final_detection["port_count"] = len(active_scan["ports"])
     else:
-
         final_detection = prediction
-
 
     # --------------------------------------------------------
     # Console output
@@ -1304,7 +1291,6 @@ def process_flow(flow):
         + "=" * 70
     )
 
-
     print(
         f"FLOW: "
         f"{flow['src_ip']}:{flow['src_port']} "
@@ -1313,26 +1299,20 @@ def process_flow(flow):
         f"| {flow['protocol']}"
     )
 
-
     print(
         f"Packets: "
         f"{len(flow['packets'])}"
     )
-
 
     print(
         f"CNN Prediction: "
         f"{prediction}"
     )
 
-
-    if behavioral_detection == "PortScan":
-
+    if behavioral_detection:
         print(
-            "BEHAVIORAL DETECTION: "
-            "PortScan"
+            f"BEHAVIORAL DETECTION: {behavioral_detection}"
         )
-
 
     print(
         f"FINAL DETECTION: "
@@ -1405,15 +1385,15 @@ def process_flow(flow):
     )
 
 
-    if behavioral_detection == "PortScan":
+    if behavioral_detection:
 
         output.append(
-            "PortScan\n"
+            f"{behavioral_detection}\n"
         )
 
         output.append(
-            "Detection Method: "
-            "Multi-flow TCP SYN analysis\n"
+            f"Detection Method: "
+            f"Behavioral {behavioral_detection} analysis\n"
         )
 
     else:
@@ -1598,7 +1578,7 @@ def send_portscan_to_backend(portscan_alert):
         response = requests.post(
             BACKEND_DETECTION_URL,
             json=payload,
-            timeout=5,
+            timeout=2,
         )
 
         if response.ok:
@@ -1616,6 +1596,50 @@ def send_portscan_to_backend(portscan_alert):
         )
 
     return False
+
+
+def send_attack_to_backend(attack_alert):
+    """
+    Send a confirmed behavioral attack detection (BruteForce, HTTP DoS,
+    TCP Connection Flood, UDP Flood, ICMP Flood, etc.) to the Node.js backend.
+    """
+
+    try:
+        ts = attack_alert.get("timestamp")
+        iso_ts = ts.isoformat() if hasattr(ts, "isoformat") else datetime.now().isoformat()
+        payload = {
+            "source_ip": attack_alert.get("source_ip"),
+            "target_ip": attack_alert.get("target_ip"),
+            "source_port": attack_alert.get("source_port", 0),
+            "target_port": attack_alert.get("target_port", 0),
+            "protocol": attack_alert.get("protocol", "TCP"),
+            "attack_type": attack_alert.get("attack_type", "Behavioral Attack"),
+            "packet_count": attack_alert.get("packet_count") or attack_alert.get("attempt_count") or attack_alert.get("request_count") or 1,
+            "details": attack_alert.get("details", ""),
+            "timestamp": iso_ts,
+        }
+
+        response = requests.post(
+            BACKEND_ATTACK_URL,
+            json=payload,
+            timeout=2,
+        )
+
+        if response.ok:
+            print(f"✅ [{attack_alert.get('attack_type')}] sent to backend successfully")
+            return True
+
+        print(
+            f"❌ Backend rejected attack: "
+            f"{response.status_code} - {response.text}"
+        )
+
+    except requests.exceptions.RequestException as error:
+        print(f"❌ Could not send attack to backend: {error}")
+
+    return False
+
+
 def create_live_payload(flow, prediction, final_detection):
     """
     Create a compact payload for Live Monitoring.
@@ -1633,9 +1657,10 @@ def create_live_payload(flow, prediction, final_detection):
         confidence = float(prediction.get("confidence", 0) or 0)
         is_attack = bool(prediction.get("is_attack", False))
 
-    # Behavioral PortScan detection overrides ML result
-    if flow.get("behavioral_detection") == "PortScan":
-        attack_type = "PortScan"
+    # Behavioral detection overrides ML result
+    beh = flow.get("behavioral_detection")
+    if beh:
+        attack_type = beh
         confidence = 1.0
         is_attack = True
 
@@ -1666,6 +1691,8 @@ def create_live_payload(flow, prediction, final_detection):
         "is_attack": is_attack,
         "detection_method": detection_method,
     }
+
+
 def send_live_monitor(payload):
     """
     Send compact flow information to the Live Monitoring system.
@@ -1710,10 +1737,11 @@ def send_flow_to_backend(flow, prediction, final_detection):
                 prediction.get("is_attack", False)
             )
 
-        # Behavioral PortScan overrides CNN result
-        if flow.get("behavioral_detection") == "PortScan":
-            attack_type = "PortScan"
-            confidence = 1
+        # Behavioral detection overrides CNN result
+        beh = flow.get("behavioral_detection")
+        if beh:
+            attack_type = beh
+            confidence = 1.0
             is_attack = True
 
         payload = {
@@ -1758,7 +1786,7 @@ def send_flow_to_backend(flow, prediction, final_detection):
         response = requests.post(
             BACKEND_FLOW_URL,
             json=payload,
-            timeout=5,
+            timeout=2,
         )
 
         if response.ok:
@@ -1807,7 +1835,7 @@ def handle_packet(packet):
 
 
     # --------------------------------------------------------
-    # PortScan behavioral detection
+    # 1. PortScan behavioral detection
     # --------------------------------------------------------
 
     portscan_alert = (
@@ -1815,7 +1843,6 @@ def handle_packet(packet):
             packet
         )
     )
-
 
     if portscan_alert is not None:
 
@@ -1831,20 +1858,11 @@ def handle_packet(packet):
             ]
         )
 
-
-        # ----------------------------------------------------
         # Mark already-active scan flows
-        # ----------------------------------------------------
-
         mark_active_flows_as_portscan(
             source_ip,
             target_ip
         )
-
-
-        # ----------------------------------------------------
-        # Create alert
-        # ----------------------------------------------------
 
         message = (
             "\n"
@@ -1853,33 +1871,183 @@ def handle_packet(packet):
             + "PORTSCAN DETECTED\n"
             + "!" * 70
             + "\n"
-            + f"Source IP       : "
-            f"{source_ip}\n"
-            + f"Target IP       : "
-            f"{target_ip}\n"
-            + f"Ports detected  : "
-            f"{portscan_alert['port_count']}\n"
-            + f"Port list       : "
-            f"{portscan_alert['ports']}\n"
-            + f"Detected at     : "
-            f"{portscan_alert['timestamp']}\n"
-            + f"Detection method: "
-            f"Multi-flow TCP SYN analysis\n"
+            + f"Source IP       : {source_ip}\n"
+            + f"Target IP       : {target_ip}\n"
+            + f"Ports detected  : {portscan_alert['port_count']}\n"
+            + f"Port list       : {portscan_alert['ports']}\n"
+            + f"Detected at     : {portscan_alert['timestamp']}\n"
+            + f"Detection method: Multi-flow TCP SYN analysis\n"
             + "!" * 70
             + "\n"
         )
-
 
         print(
             message
         )
 
-
         write_output(
             message
         )
-        # Send confirmed PortScan to backend
         send_portscan_to_backend(portscan_alert)
+
+    # --------------------------------------------------------
+    # 2. BruteForce behavioral detection
+    # --------------------------------------------------------
+
+    bruteforce_alert = detect_bruteforce(packet)
+
+    if bruteforce_alert is not None:
+        source_ip = bruteforce_alert["source_ip"]
+        mark_active_flows_as_attack(source_ip, "BruteForce")
+
+        message = (
+            "\n"
+            + "!" * 70
+            + "\n"
+            + "BRUTEFORCE ATTACK DETECTED\n"
+            + "!" * 70
+            + "\n"
+            + f"Source IP       : {source_ip}\n"
+            + f"Target IP       : {bruteforce_alert['target_ip']}\n"
+            + f"Target Port     : {bruteforce_alert['target_port']}\n"
+            + f"Attempts        : {bruteforce_alert['attempt_count']}\n"
+            + f"Details         : {bruteforce_alert.get('details', '')}\n"
+            + f"Detected at     : {bruteforce_alert['timestamp']}\n"
+            + f"Detection method: Behavioral Auth Service Probing Analysis\n"
+            + "!" * 70
+            + "\n"
+        )
+
+        print(message)
+        write_output(message)
+        send_attack_to_backend(bruteforce_alert)
+
+    # --------------------------------------------------------
+    # 3. HTTP DoS behavioral detection
+    # --------------------------------------------------------
+
+    http_dos_alert = detect_http_dos(packet)
+
+    if http_dos_alert is not None:
+        source_ip = http_dos_alert["source_ip"]
+        mark_active_flows_as_attack(source_ip, "HTTP DoS")
+
+        message = (
+            "\n"
+            + "!" * 70
+            + "\n"
+            + "HTTP DoS ATTACK DETECTED\n"
+            + "!" * 70
+            + "\n"
+            + f"Source IP       : {source_ip}\n"
+            + f"Target IP       : {http_dos_alert['target_ip']}\n"
+            + f"Target Port     : {http_dos_alert['target_port']}\n"
+            + f"Requests        : {http_dos_alert['request_count']}\n"
+            + f"Details         : {http_dos_alert.get('details', '')}\n"
+            + f"Detected at     : {http_dos_alert['timestamp']}\n"
+            + f"Detection method: High-rate HTTP request burst analysis\n"
+            + "!" * 70
+            + "\n"
+        )
+
+        print(message)
+        write_output(message)
+        send_attack_to_backend(http_dos_alert)
+
+    # --------------------------------------------------------
+    # 4. TCP Connection Flood behavioral detection
+    # --------------------------------------------------------
+
+    tcp_flood_alert = detect_tcp_flood(packet)
+
+    if tcp_flood_alert is not None:
+        source_ip = tcp_flood_alert["source_ip"]
+        mark_active_flows_as_attack(source_ip, "TCP Connection Flood")
+
+        message = (
+            "\n"
+            + "!" * 70
+            + "\n"
+            + "TCP CONNECTION FLOOD DETECTED\n"
+            + "!" * 70
+            + "\n"
+            + f"Source IP       : {source_ip}\n"
+            + f"Target IP       : {tcp_flood_alert['target_ip']}\n"
+            + f"Target Port     : {tcp_flood_alert['target_port']}\n"
+            + f"SYN Count       : {tcp_flood_alert['packet_count']}\n"
+            + f"Details         : {tcp_flood_alert.get('details', '')}\n"
+            + f"Detected at     : {tcp_flood_alert['timestamp']}\n"
+            + f"Detection method: Volumetric TCP SYN flood analysis\n"
+            + "!" * 70
+            + "\n"
+        )
+
+        print(message)
+        write_output(message)
+        send_attack_to_backend(tcp_flood_alert)
+
+    # --------------------------------------------------------
+    # 5. UDP Flood behavioral detection
+    # --------------------------------------------------------
+
+    udp_flood_alert = detect_udp_flood(packet)
+
+    if udp_flood_alert is not None:
+        source_ip = udp_flood_alert["source_ip"]
+        mark_active_flows_as_attack(source_ip, "UDP Flood")
+
+        message = (
+            "\n"
+            + "!" * 70
+            + "\n"
+            + "UDP FLOOD DETECTED\n"
+            + "!" * 70
+            + "\n"
+            + f"Source IP       : {source_ip}\n"
+            + f"Target IP       : {udp_flood_alert['target_ip']}\n"
+            + f"Target Port     : {udp_flood_alert['target_port']}\n"
+            + f"Packet Count    : {udp_flood_alert['packet_count']}\n"
+            + f"Details         : {udp_flood_alert.get('details', '')}\n"
+            + f"Detected at     : {udp_flood_alert['timestamp']}\n"
+            + f"Detection method: Volumetric UDP packet analysis\n"
+            + "!" * 70
+            + "\n"
+        )
+
+        print(message)
+        write_output(message)
+        send_attack_to_backend(udp_flood_alert)
+
+    # --------------------------------------------------------
+    # 6. ICMP Flood behavioral detection
+    # --------------------------------------------------------
+
+    icmp_flood_alert = detect_icmp_flood(packet)
+
+    if icmp_flood_alert is not None:
+        source_ip = icmp_flood_alert["source_ip"]
+        mark_active_flows_as_attack(source_ip, "ICMP Flood")
+
+        message = (
+            "\n"
+            + "!" * 70
+            + "\n"
+            + "ICMP FLOOD DETECTED\n"
+            + "!" * 70
+            + "\n"
+            + f"Source IP       : {source_ip}\n"
+            + f"Target IP       : {icmp_flood_alert['target_ip']}\n"
+            + f"Packet Count    : {icmp_flood_alert['packet_count']}\n"
+            + f"Details         : {icmp_flood_alert.get('details', '')}\n"
+            + f"Detected at     : {icmp_flood_alert['timestamp']}\n"
+            + f"Detection method: High-rate ICMP Echo Request analysis\n"
+            + "!" * 70
+            + "\n"
+        )
+
+        print(message)
+        write_output(message)
+        send_attack_to_backend(icmp_flood_alert)
 
     # --------------------------------------------------------
     # Get flow information
@@ -1889,16 +2057,13 @@ def handle_packet(packet):
         packet
     )
 
-
     if info is None:
 
         return
 
-
     key = info["key"]
 
     now = time.time()
-
 
     # --------------------------------------------------------
     # Add packet to flow
@@ -1941,38 +2106,33 @@ def handle_packet(packet):
                     None,
             }
 
-
         flow = flows[key]
-
 
         flow["packets"].append(
             packet
         )
 
-
         flow["last_time"] = now
 
         flow["last_seen"] = now
 
-
         # ----------------------------------------------------
-        # If this source/target is already a detected scan,
-        # mark this flow as PortScan immediately.
+        # If this source/target is an active attack,
+        # mark this flow immediately.
         # ----------------------------------------------------
 
-        active_scan = (
-            get_active_portscan(
+        active_attack = (
+            get_active_behavioral_attack(
                 info["src_ip"],
-                info["dst_ip"]
+                info["dst_port"]
             )
         )
 
-
-        if active_scan is not None:
+        if active_attack is not None:
 
             flow[
                 "behavioral_detection"
-            ] = "PortScan"
+            ] = active_attack
 
 
 # ============================================================
@@ -2088,15 +2248,25 @@ def main():
 
 
     print(
-        f"PortScan threshold: "
-        f"{PORTSCAN_PORT_THRESHOLD} "
-        f"distinct ports"
+        "Behavioral Detectors Active:"
     )
-
-
     print(
-        f"PortScan window : "
-        f"{PORTSCAN_WINDOW} seconds"
+        f"  1. PortScan           : {PORTSCAN_PORT_THRESHOLD} ports / {PORTSCAN_WINDOW}s"
+    )
+    print(
+        f"  2. BruteForce         : {BRUTEFORCE_THRESHOLD} attempts / {BRUTEFORCE_WINDOW}s"
+    )
+    print(
+        f"  3. HTTP DoS           : {HTTP_DOS_THRESHOLD} reqs / {HTTP_DOS_WINDOW}s"
+    )
+    print(
+        f"  4. TCP SYN Flood      : {TCP_SYN_FLOOD_THRESHOLD} SYNs / {TCP_SYN_FLOOD_WINDOW}s"
+    )
+    print(
+        f"  5. UDP Flood          : {UDP_FLOOD_THRESHOLD} packets / {UDP_FLOOD_WINDOW}s"
+    )
+    print(
+        f"  6. ICMP Ping Flood    : {ICMP_FLOOD_THRESHOLD} packets / {ICMP_FLOOD_WINDOW}s"
     )
 
 
@@ -2124,16 +2294,16 @@ def main():
 
 
     # --------------------------------------------------------
-    # Start PortScan cleanup worker
+    # Start behavioral cleanup worker
     # --------------------------------------------------------
 
-    portscan_worker = threading.Thread(
-        target=cleanup_portscan_tracker,
+    behavioral_worker = threading.Thread(
+        target=cleanup_behavioral_trackers,
         daemon=True
     )
 
 
-    portscan_worker.start()
+    behavioral_worker.start()
 
     capture_interface = find_capture_interface()
 
@@ -2156,17 +2326,21 @@ def main():
     # --------------------------------------------------------
 
     sniffer = None
-
+    stopping = False
 
     def stop_capture(signum=None, frame=None):
+        nonlocal stopping
+        if stopping:
+            print("\n[AI-NIDS] Forced exit requested. Terminating immediately...")
+            os._exit(0)
 
+        stopping = True
+        print("\n[AI-NIDS] Stopping packet capture... (press CTRL+C again to force exit)")
         stop_event.set()
 
         if sniffer is not None:
-
             try:
                 sniffer.stop()
-
             except Exception:
                 pass
 
@@ -2189,7 +2363,7 @@ def main():
         sniffer.start()
 
 
-        while not stop_event.wait(0.5):
+        while not stop_event.wait(0.3):
 
             pass
 
@@ -2213,17 +2387,19 @@ def main():
 
     finally:
 
-        stop_capture()
-
+        stop_event.set()
 
         if sniffer is not None:
 
             try:
-
-                sniffer.join()
-
+                sniffer.stop()
             except Exception:
+                pass
 
+            try:
+                # Use timed join so Npcap C-level wait never hangs the main thread on Windows
+                sniffer.join(timeout=0.5)
+            except Exception:
                 pass
 
 
@@ -2232,7 +2408,6 @@ def main():
         # ----------------------------------------------------
 
         remaining = []
-
 
         with lock:
 
@@ -2243,13 +2418,17 @@ def main():
             flows.clear()
 
 
-        for flow in remaining:
-
-            process_flow(flow)
+        if remaining:
+            print(f"[AI-NIDS] Finalizing {len(remaining)} captured flow(s)...")
+            for flow in remaining:
+                try:
+                    process_flow(flow)
+                except Exception:
+                    pass
 
 
         print(
-            "\nCapture stopped."
+            "\nCapture stopped successfully."
         )
 
         print(

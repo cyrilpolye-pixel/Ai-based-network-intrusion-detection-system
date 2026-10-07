@@ -1,3 +1,12 @@
+# ============================================================
+# SCRIPT: test_binary_benign.py
+# PURPOSE: Tests binary 1D-CNN classifier against pure BENIGN
+#          network traffic from Monday-WorkingHours.pcap_ISCX.csv.
+#          Measures false positive rate, accuracy on clean traffic,
+#          and validates the 78-feature alignment with the model scaler.
+# OUTPUT: Output log saved in test_binary_benign.txt
+# ============================================================
+
 import os
 import numpy as np
 import pandas as pd

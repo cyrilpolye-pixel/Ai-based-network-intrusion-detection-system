@@ -111,16 +111,34 @@ FLOW_TIMEOUT = 3.0
 
 
 # ============================================================
-# PORTSCAN DETECTION
+# BEHAVIORAL ATTACK DETECTION THRESHOLDS
 # ============================================================
 
-# Number of different destination ports contacted by the
-# same source within PORTSCAN_WINDOW seconds before the
-# activity is classified as a PortScan.
-
+# 1. PortScan
 PORTSCAN_PORT_THRESHOLD = 10
-
 PORTSCAN_WINDOW = 5.0
+
+# 2. BruteForce (rapid attempts to authentication or service ports)
+BRUTEFORCE_THRESHOLD = 8
+BRUTEFORCE_WINDOW = 10.0
+AUTH_SERVICE_PORTS = {8080, 80, 443, 21, 22, 23, 3389, 25, 110, 143}
+
+# 3. HTTP DoS (high-frequency HTTP request bursts)
+HTTP_DOS_THRESHOLD = 25
+HTTP_DOS_WINDOW = 5.0
+HTTP_PORTS = {80, 443, 8080, 5000, 3000, 8000}
+
+# 4. TCP Connection Flood (SYN Flood targeting single port)
+TCP_SYN_FLOOD_THRESHOLD = 30
+TCP_SYN_FLOOD_WINDOW = 3.0
+
+# 5. UDP Flood (high volumetric datagram flood)
+UDP_FLOOD_THRESHOLD = 35
+UDP_FLOOD_WINDOW = 3.0
+
+# 6. ICMP Flood (Ping of death / echo request flood)
+ICMP_FLOOD_THRESHOLD = 20
+ICMP_FLOOD_WINDOW = 3.0
 
 
 # ============================================================
@@ -137,3 +155,15 @@ OUTPUT_FILE = "flow_output.txt"
 print(
     f"[AI-NIDS] Automatically detected local IP: {PC_IP}"
 )
+
+
+
+
+
+
+
+
+
+
+
+
