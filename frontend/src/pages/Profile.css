@@ -419,3 +419,13 @@
     flex-direction: column;
   }
 }
+
+
+@media print {
+  img {
+    display: block !important;
+    max-width: 100% !important;
+    /* Prevent images from breaking across pages */
+    page-break-inside: avoid;
+  }
+}
